@@ -1,38 +1,32 @@
-# Contributing
+# コントリビューション ガイド
 
-## Pull Requests
+## プルリクエスト
 
-- Branch from `main`
-- Branch name: `feat/description`, `fix/description`, `docs/description`, etc.
-- Keep PRs focused — one feature or fix per PR
-- Ensure `pnpm build` passes before submitting
-- Direct pushes to `main` are blocked; all changes go through PRs
+- `main` ブランチからブランチを切る
+- ブランチ名: `feat/説明`, `fix/説明`, `docs/説明` など
+- PRは1つの機能または修正に集中させる
+- 提出前に `pnpm build` が通ることを確認する
+- `main` への直接プッシュは禁止。すべての変更はPRを通す
 
-## Commit Messages
-
-```
-prefix(package): content
-```
-
-### Prefix
-
-- `feat` — New feature
-- `fix` — Bug fix
-- `refactor` — Code restructuring without behavior change
-- `docs` — Documentation
-- `chore` — Build, config, and other maintenance
-
-### Package
-
-Target package name: `core`, `dom`, `react`, `playground`
-
-Can be omitted when changes span multiple packages.
-
-### Examples
+## コミットメッセージ
 
 ```
-feat(core): add border and shadow support to box node
-fix(renderer): correct canvas scaling on HiDPI displays
-refactor(core): split node rendering into separate modules for extensibility
+prefix: 内容
+```
+
+### プレフィックス
+
+- `feat` — 新機能
+- `fix` — バグ修正
+- `refactor` — 振る舞いを変えないコードの再構成
+- `docs` — ドキュメント
+- `chore` — ビルド、設定、その他のメンテナンス
+
+### 例
+
+```
+feat: add border and shadow support to box node
+fix: correct canvas scaling on HiDPI displays
+refactor: split node rendering into separate modules for extensibility
 docs: add CONTRIBUTING.md
 ```
