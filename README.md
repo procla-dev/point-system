@@ -42,6 +42,19 @@ curl http://localhost:8787/api/health/db
 
 `src/` はバインドマウントされているため、ソースを編集すると自動でリロードされる（フロントエンドは HMR、バックエンドは `tsx watch` による再起動）。
 
+## APIドキュメント
+
+OpenAPI 3.1 の定義を Swagger UI で閲覧できる。
+
+| 内容 | URL |
+|---|---|
+| Swagger UI | http://localhost:8787/api/docs |
+| OpenAPI JSON | http://localhost:8787/api/openapi.json |
+
+Vite の proxy 経由（http://localhost:5173/api/docs ）でも同じものが見える。
+
+定義はコードから生成される。ルートを追加するときは `@hono/zod-openapi` の `createRoute` でスキーマを書き、`backend/src/routes/` 以下に置いて `backend/src/app.ts` で `app.route()` に登録する。リクエスト/レスポンスの型は zod スキーマから導出されるため、実装とドキュメントがずれない。
+
 ## データベース
 
 スキーマ定義は Drizzle ORM で `backend/src/db/schema.ts` に記述する。生成されたマイグレーションSQLは `backend/drizzle/` に置かれ、Gitで管理する。
@@ -111,7 +124,8 @@ cd frontend && npm install && npm run dev
 ├── backend/            Hono APIサーバー
 │   ├── drizzle/        マイグレーションSQL
 │   └── src/
-│       └── db/         スキーマ定義とDBクライアント
+│       ├── db/         スキーマ定義とDBクライアント
+│       └── routes/     ルート定義（OpenAPIスキーマ付き）
 ├── frontend/           React + Vite
 │   └── src/
 ├── docs/               仕様書
