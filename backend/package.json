@@ -6,16 +6,21 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@hono/node-server": "2.1.1",
+    "drizzle-orm": "0.45.2",
     "hono": "4.13.5",
     "pg": "8.16.3"
   },
   "devDependencies": {
     "@types/node": "26.4.0",
     "@types/pg": "8.15.5",
+    "drizzle-kit": "0.31.10",
     "tsx": "4.23.13",
     "typescript": "5.9.3"
   }

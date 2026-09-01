@@ -42,6 +42,41 @@ curl http://localhost:8787/api/health/db
 
 `src/` はバインドマウントされているため、ソースを編集すると自動でリロードされる（フロントエンドは HMR、バックエンドは `tsx watch` による再起動）。
 
+## データベース
+
+スキーマ定義は Drizzle ORM で `backend/src/db/schema.ts` に記述する。生成されたマイグレーションSQLは `backend/drizzle/` に置かれ、Gitで管理する。
+
+初回起動後、マイグレーションを適用する:
+
+```sh
+docker compose exec backend npm run db:migrate
+```
+
+スキーマを変更したときは、マイグレーションを生成してから適用する:
+
+```sh
+docker compose exec backend npm run db:generate   # drizzle/ にSQLを生成
+docker compose exec backend npm run db:migrate    # DBに適用
+```
+
+生成されたSQLは必ず内容を確認してからコミットする。
+
+Drizzle Studio でデータを確認する:
+
+```sh
+docker compose exec backend npm run db:studio
+```
+
+### テーブル
+
+| テーブル | 内容 |
+|---|---|
+| `booths` | ブース。種別（展示 / カジノ / 景品交換）と展示ブースの付与ポイント数 |
+| `users` | クライアント / スタッフ / 管理者。スタッフは担当ブースに紐づく |
+| `point_transactions` | ポイントの変動履歴。正の値が付与、負の値が消費 |
+
+ポイント残高は `point_transactions.amount` の合計から算出する（残高カラムは持たない）。
+
 ### よく使うコマンド
 
 ```sh
@@ -70,7 +105,9 @@ cd frontend && npm install && npm run dev
 ```
 .
 ├── backend/            Hono APIサーバー
+│   ├── drizzle/        マイグレーションSQL
 │   └── src/
+│       └── db/         スキーマ定義とDBクライアント
 ├── frontend/           React + Vite
 │   └── src/
 ├── docs/               仕様書
