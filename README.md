@@ -71,11 +71,9 @@ docker compose exec backend npm run db:studio
 
 | テーブル | 内容 |
 |---|---|
-| `booths` | ブース。種別（展示 / カジノ / 景品交換）と展示ブースの付与ポイント数 |
-| `users` | クライアント / スタッフ / 管理者。スタッフは担当ブースに紐づく |
-| `point_transactions` | ポイントの変動履歴。正の値が付与、負の値が消費 |
+| `users` | クライアント / スタッフ / 管理者。役割と表示名を持つ |
 
-ポイント残高は `point_transactions.amount` の合計から算出する（残高カラムは持たない）。
+ブースやポイント履歴のテーブルは、仕様の詳細が固まってから追加する。
 
 ### よく使うコマンド
 
@@ -87,7 +85,13 @@ docker compose down -v            # 停止してDBのデータも削除
 docker compose up -d --build      # 依存を追加したあとの再ビルド
 ```
 
-依存パッケージを追加したときは、ホスト側で `npm install` を実行して `package-lock.json` を更新したうえで `docker compose up -d --build` する。
+依存パッケージを追加したときは、ホスト側で `npm install` を実行して `package-lock.json` を更新したうえで、コンテナを再ビルドする。
+
+```sh
+docker compose up -d --build --renew-anon-volumes
+```
+
+`node_modules` はコンテナ内のものを使うため（ホストとプラットフォームが異なるとネイティブバイナリが動かない）、`--renew-anon-volumes` を付けて再生成する必要がある。
 
 ### コンテナを使わない場合
 
