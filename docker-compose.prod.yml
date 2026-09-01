@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    # ポートは公開しない。DBには同一ネットワーク内からのみ接続する
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # APIドキュメントを本番でも公開する場合のみ true にする
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+    # ポートは公開しない。web(Caddy) 経由でのみ到達させる
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS is required}
+      BACKEND_ORIGIN: http://backend:8787
+    ports:
+      - '80:80'
+      - '443:443'
+      # HTTP/3 (QUIC)
+      - '443:443/udp'
+    volumes:
+      # 取得した証明書を永続化する。消すと再起動ごとに再発行され、レート制限に当たる
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

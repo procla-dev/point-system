@@ -20,17 +20,25 @@ app.use(
 
 app.route('/api', health)
 
-app.doc(OPENAPI_JSON_PATH, {
-  openapi: '3.1.0',
-  info: {
-    title: 'ポイントシステム API',
-    version: '0.1.0',
-    description: 'キャンパスフェスティバル向けポイントシステムのAPI',
-  },
-  servers: [{ url: '/', description: '同一オリジン' }],
-  tags: [{ name: 'Health', description: '稼働確認' }],
-})
+// APIドキュメントは本番では既定で公開しない。
+// ENABLE_API_DOCS=true を明示した場合のみ有効になる。
+export const apiDocsEnabled =
+  process.env.ENABLE_API_DOCS === 'true' ||
+  (process.env.NODE_ENV !== 'production' && process.env.ENABLE_API_DOCS !== 'false')
 
-app.get(SWAGGER_UI_PATH, swaggerUI({ url: OPENAPI_JSON_PATH }))
+if (apiDocsEnabled) {
+  app.doc(OPENAPI_JSON_PATH, {
+    openapi: '3.1.0',
+    info: {
+      title: 'ポイントシステム API',
+      version: '0.1.0',
+      description: 'キャンパスフェスティバル向けポイントシステムのAPI',
+    },
+    servers: [{ url: '/', description: '同一オリジン' }],
+    tags: [{ name: 'Health', description: '稼働確認' }],
+  })
+
+  app.get(SWAGGER_UI_PATH, swaggerUI({ url: OPENAPI_JSON_PATH }))
+}
 
 export type AppType = typeof app

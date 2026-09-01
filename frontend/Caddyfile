@@ -1,0 +1,27 @@
+# SITE_ADDRESS には公開するドメインを指定する（例: point.example.com）
+# ドメインを指定すると Caddy が Let's Encrypt で証明書を自動取得し、HTTPSにリダイレクトする。
+# ローカルでの動作確認では :80 を指定してHTTPのまま起動できる。
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# APIはバックエンドへ。フロントと同一オリジンになるためCORSは不要
+	handle /api/* {
+		reverse_proxy {$BACKEND_ORIGIN:http://backend:8787}
+	}
+
+	handle {
+		root * /srv
+
+		# ハッシュ付きのビルド成果物は内容が変わればファイル名も変わるので長期キャッシュ
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		# index.html はデプロイのたびに差し替わるためキャッシュさせない
+		@html path / /index.html
+		header @html Cache-Control "no-cache"
+
+		# SPAなので未知のパスは index.html に返す
+		try_files {path} /index.html
+		file_server
+	}
+}
