@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-point}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-point}
+      POSTGRES_DB: ${POSTGRES_DB:-point_system}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18 以降のイメージは /var/lib/postgresql 直下にマウントする
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-point} -d ${POSTGRES_DB:-point_system}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      DATABASE_URL: postgres://${POSTGRES_USER:-point}:${POSTGRES_PASSWORD:-point}@db:5432/${POSTGRES_DB:-point_system}
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - '${BACKEND_PORT:-8787}:8787'
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
+      - ./backend/tsconfig.json:/app/tsconfig.json
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8787
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/package.json:/app/package.json
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
