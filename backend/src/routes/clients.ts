@@ -1,8 +1,9 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
+import { getCookie } from 'hono/cookie';
 import { loginTokens, users } from '../db/schema.js';
-import { createLoginToken } from '../services/auth.js';
-import { createClient, findClientById } from '../services/clients.js';
+import { createLoginToken, getSessionUser, SESSION_COOKIE_NAME } from '../services/auth.js';
+import { createClient, findClientById, setClientDisplayName } from '../services/clients.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -14,6 +15,23 @@ const ClientResponse = createSelectSchema(users).pick({
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
+
+const updateMeRoute = createRoute({
+  method: 'patch',
+  path: '/me',
+  operationId: 'updateMe',
+  tags: ['Clients'],
+  summary: '初回ログイン時に自分の表示名を設定する',
+  request: {
+    body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
+  },
+  responses: {
+    200: { description: '更新成功', content: { 'application/json': { schema: ClientResponse } } },
+    401: { description: '未ログイン' },
+    403: { description: 'クライアントとしてログインしていない' },
+    409: { description: '表示名は設定済み' },
+  },
+});
 
 const createClientRoute = createRoute({
   method: 'post',
@@ -40,6 +58,20 @@ const issueLoginTokenRoute = createRoute({
 });
 
 export const clients = new OpenAPIHono();
+
+clients.openapi(updateMeRoute, async (c) => {
+  const token = getCookie(c, SESSION_COOKIE_NAME);
+  const user = token ? await getSessionUser(token) : undefined;
+  if (!user) return c.json('', 401);
+
+  if (user.role !== 'client') return c.json('', 403);
+  if (user.displayName !== null) return c.json('', 409);
+
+  const { displayName } = c.req.valid('json');
+  const client = await setClientDisplayName(user.id, displayName);
+
+  return c.json({ id: client!.id, displayName: client!.displayName }, 200);
+});
 
 clients.openapi(createClientRoute, async (c) => {
   const { id, displayName } = await createClient();

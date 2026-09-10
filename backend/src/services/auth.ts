@@ -3,6 +3,8 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { users, loginTokens, sessions } from '../db/schema.js';
 
+export const SESSION_COOKIE_NAME = 'session';
+
 const LOGIN_TOKEN_TTL_MS = 5 * 60 * 1000;
 
 const generateToken = (): string => randomBytes(32).toString('base64url');

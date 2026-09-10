@@ -12,3 +12,13 @@ export async function findClientById(id: string) {
     where: and(eq(users.id, id), eq(users.role, 'client')),
   });
 }
+
+export async function setClientDisplayName(id: string, displayName: string) {
+  const [client] = await db
+    .update(users)
+    .set({ displayName })
+    .where(and(eq(users.id, id), eq(users.role, 'client')))
+    .returning();
+
+  return client;
+}
