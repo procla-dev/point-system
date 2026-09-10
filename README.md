@@ -42,6 +42,39 @@ curl http://localhost:8787/api/health/db
 
 `src/` はバインドマウントされているため、ソースを編集すると自動でリロードされる（フロントエンドは HMR、バックエンドは `tsx watch` による再起動）。
 
+## データベース
+
+スキーマ定義は Drizzle ORM で `backend/src/db/schema.ts` に記述する。生成されたマイグレーションSQLは `backend/drizzle/` に置かれ、Gitで管理する。
+
+初回起動後、マイグレーションを適用する:
+
+```sh
+docker compose exec backend npm run db:migrate
+```
+
+スキーマを変更したときは、マイグレーションを生成してから適用する:
+
+```sh
+docker compose exec backend npm run db:generate   # drizzle/ にSQLを生成
+docker compose exec backend npm run db:migrate    # DBに適用
+```
+
+生成されたSQLは必ず内容を確認してからコミットする。
+
+Drizzle Studio でデータを確認する:
+
+```sh
+docker compose exec backend npm run db:studio
+```
+
+### テーブル
+
+| テーブル | 内容 |
+|---|---|
+| `users` | クライアント / スタッフ / 管理者。役割と表示名を持つ |
+
+ブースやポイント履歴のテーブルは、仕様の詳細が固まってから追加する。
+
 ### よく使うコマンド
 
 ```sh
@@ -52,7 +85,13 @@ docker compose down -v            # 停止してDBのデータも削除
 docker compose up -d --build      # 依存を追加したあとの再ビルド
 ```
 
-依存パッケージを追加したときは、ホスト側で `npm install` を実行して `package-lock.json` を更新したうえで `docker compose up -d --build` する。
+依存パッケージを追加したときは、ホスト側で `npm install` を実行して `package-lock.json` を更新したうえで、コンテナを再ビルドする。
+
+```sh
+docker compose up -d --build --renew-anon-volumes
+```
+
+`node_modules` はコンテナ内のものを使うため（ホストとプラットフォームが異なるとネイティブバイナリが動かない）、`--renew-anon-volumes` を付けて再生成する必要がある。
 
 ### コンテナを使わない場合
 
@@ -70,7 +109,9 @@ cd frontend && npm install && npm run dev
 ```
 .
 ├── backend/            Hono APIサーバー
+│   ├── drizzle/        マイグレーションSQL
 │   └── src/
+│       └── db/         スキーマ定義とDBクライアント
 ├── frontend/           React + Vite
 │   └── src/
 ├── docs/               仕様書

@@ -30,9 +30,10 @@ services:
     ports:
       - '${BACKEND_PORT:-8787}:8787'
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/package.json:/app/package.json
-      - ./backend/tsconfig.json:/app/tsconfig.json
+      # ソース全体をマウントし、node_modules はコンテナ内のものを使う
+      # （ホストとコンテナでネイティブバイナリのプラットフォームが異なるため）
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       db:
         condition: service_healthy
@@ -47,10 +48,8 @@ services:
     ports:
       - '${FRONTEND_PORT:-5173}:5173'
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/index.html:/app/index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts
-      - ./frontend/package.json:/app/package.json
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
 
