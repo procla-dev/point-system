@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 
@@ -17,7 +17,7 @@ export async function setClientDisplayName(id: string, displayName: string) {
   const [client] = await db
     .update(users)
     .set({ displayName })
-    .where(and(eq(users.id, id), eq(users.role, 'client')))
+    .where(and(eq(users.id, id), eq(users.role, 'client'), isNull(users.displayName)))
     .returning();
 
   return client;

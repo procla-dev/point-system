@@ -26,14 +26,13 @@ export async function createLoginToken(userId: string) {
 export async function consumeLoginToken(token: string) {
   const tokenHash = hashToken(token);
 
-  const row = await db.query.loginTokens.findFirst({
-    where: and(eq(loginTokens.tokenHash, tokenHash), isNull(loginTokens.usedAt), gt(loginTokens.expiresAt, new Date())),
-  });
+  const [row] = await db
+    .update(loginTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(loginTokens.tokenHash, tokenHash), isNull(loginTokens.usedAt), gt(loginTokens.expiresAt, new Date())))
+    .returning();
+
   if (!row) return null;
-
-  // 同時リクエストでの二重ログインを防ぐため、セッション作成より先に使用済みにする
-  await db.update(loginTokens).set({ usedAt: new Date() }).where(eq(loginTokens.id, row.id));
-
   return db.query.users.findFirst({ where: eq(users.id, row.userId) });
 }
 

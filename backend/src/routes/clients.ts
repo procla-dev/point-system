@@ -63,12 +63,12 @@ export const clients = new OpenAPIHono();
 
 clients.openapi(updateMeRoute, async (c) => {
   const user = c.get('user');
-  if (user.displayName !== null) throw new ConflictError('display name is already set');
-
   const { displayName } = c.req.valid('json');
-  const client = await setClientDisplayName(user.id, displayName);
 
-  return c.json({ id: client!.id, displayName: client!.displayName }, 200);
+  const client = await setClientDisplayName(user.id, displayName);
+  if (!client) throw new ConflictError('display name is already set');
+
+  return c.json({ id: client.id, displayName: client.displayName }, 200);
 });
 
 clients.openapi(createClientRoute, async (c) => {

@@ -42,6 +42,7 @@ sessions.openapi(createSessionRoute, async (c) => {
     sameSite: 'Lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
+    maxAge: 60 * 60 * 24, // 開催期間(1日)に合わせた有効期限
   });
 
   return c.json({ role: user.role, displayName: user.displayName }, 201);
