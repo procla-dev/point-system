@@ -1,6 +1,7 @@
 import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { health } from './routes/health.js';
 import { clients } from './routes/clients.js';
@@ -16,6 +17,14 @@ base.use(
     credentials: true,
   }),
 );
+
+base.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return c.json({ status: 'error' as const, message: err.message }, err.status);
+  }
+  console.error(err);
+  return c.json({ status: 'error' as const, message: 'internal server error' }, 500);
+});
 
 const routes = base.route('/', health).route('/clients', clients).route('/sessions', sessions);
 
