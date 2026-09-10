@@ -2,25 +2,23 @@ import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { clients } from './routes/clients.js'
 import { health } from './routes/health.js'
 
-export const OPENAPI_JSON_PATH = '/api/openapi.json'
-export const SWAGGER_UI_PATH = '/api/docs'
+const base = new OpenAPIHono().basePath('/api')
 
-export const app = new OpenAPIHono()
-
-app.use('*', logger())
-app.use(
-  '/api/*',
+base.use('*', logger())
+base.use(
+  '*',
   cors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'],
     credentials: true,
   }),
 )
 
-app.route('/api', health)
+const routes = base.route('/', health).route('/clients', clients)
 
-app.doc(OPENAPI_JSON_PATH, {
+routes.doc('/openapi.json', {
   openapi: '3.1.0',
   info: {
     title: 'ポイントシステム API',
@@ -28,9 +26,12 @@ app.doc(OPENAPI_JSON_PATH, {
     description: 'キャンパスフェスティバル向けポイントシステムのAPI',
   },
   servers: [{ url: '/', description: '同一オリジン' }],
-  tags: [{ name: 'Health', description: '稼働確認' }],
+  tags: [
+    { name: 'Health', description: '稼働確認' },
+    { name: 'Clients', description: 'クライアントアカウント' },
+  ],
 })
 
-app.get(SWAGGER_UI_PATH, swaggerUI({ url: OPENAPI_JSON_PATH }))
+routes.get('/docs', swaggerUI({ url: '/api/openapi.json' }))
 
-export type AppType = typeof app
+export const app = routes
