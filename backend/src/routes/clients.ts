@@ -41,8 +41,11 @@ const createClientRoute = createRoute({
   operationId: 'createClient',
   tags: ['Clients'],
   summary: 'クライアントアカウントを発行する',
+  middleware: [requireRole('staff')] as const,
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: ClientResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -52,9 +55,12 @@ const issueLoginTokenRoute = createRoute({
   operationId: 'issueClientLoginToken',
   tags: ['Clients'],
   summary: 'クライアントのログイン用トークンを発行する',
+  middleware: [requireRole('staff')] as const,
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
     201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'クライアントが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
