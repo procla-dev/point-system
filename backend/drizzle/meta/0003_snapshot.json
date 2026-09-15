@@ -1,9 +1,42 @@
 {
-  "id": "7705a81e-b6a7-4140-95d3-63ed68b0742d",
-  "prevId": "b85d2ca3-8f9d-4fbe-ade2-acd07fdbf8a2",
+  "id": "fea3a2d0-b1fb-4b15-b16d-0af542a4d8a4",
+  "prevId": "7705a81e-b6a7-4140-95d3-63ed68b0742d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.booths": {
+      "name": "booths",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.login_tokens": {
       "name": "login_tokens",
       "schema": "",
@@ -162,6 +195,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "booth_id": {
+          "name": "booth_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -171,7 +210,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "users_booth_id_booths_id_fk": {
+          "name": "users_booth_id_booths_id_fk",
+          "tableFrom": "users",
+          "tableTo": "booths",
+          "columnsFrom": [
+            "booth_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

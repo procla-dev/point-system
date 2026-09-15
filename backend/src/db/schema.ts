@@ -2,12 +2,12 @@ import { relations } from 'drizzle-orm';
 import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
-export const userRole = pgEnum('user_role', ['client', 'staff', 'admin']);
+export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   role: userRole('role').notNull(),
-  /** クライアントが初回ログイン時に自由入力する表示名。発行直後は null */
+  /** ユーザーが初回ログイン時に自由入力する表示名。発行直後は null */
   displayName: text('display_name'),
   /** staffの担当ブース。staff以外はnull。項目が増えたら別テーブルに切り出す */
   boothId: uuid('booth_id').references(() => booths.id),
