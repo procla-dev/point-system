@@ -4,6 +4,7 @@ import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
+import { grantUserPoints } from '../services/points.js';
 import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -16,6 +17,13 @@ const UserResponse = createSelectSchema(usersTable).pick({
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
+
+const PointGrantResponse = z.object({
+  userId: z.uuid(),
+  grantedPoints: z.number().int().positive(),
+  balance: z.number().int().nonnegative(),
+  transactionId: z.uuid(),
+});
 
 const updateMeRoute = createRoute({
   method: 'patch',
@@ -65,6 +73,32 @@ const issueLoginTokenRoute = createRoute({
   },
 });
 
+const grantUserPointsRoute = createRoute({
+  method: 'post',
+  path: '/{id}/points',
+  operationId: 'grantUserPoints',
+  tags: ['Users'],
+  summary: 'ユーザーにポイントを付与する',
+  middleware: [requireRole('staff')] as const,
+  request: {
+    params: z.object({ id: z.uuid() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({ points: z.number().int().positive() }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: { description: '付与成功', content: { 'application/json': { schema: PointGrantResponse } } },
+    400: { description: 'ポイント数が正の整数ではない', content: { 'application/json': { schema: ErrorResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
 export const users = new OpenAPIHono();
 
 users.openapi(updateMeRoute, async (c) => {
@@ -90,4 +124,28 @@ users.openapi(issueLoginTokenRoute, async (c) => {
 
   const { token, expiresAt } = await createLoginToken(user.id);
   return c.json({ token, expiresAt }, 201);
+});
+
+users.openapi(grantUserPointsRoute, async (c) => {
+  const { id } = c.req.valid('param');
+  const { points } = c.req.valid('json');
+  const operator = c.get('user');
+
+  const result = await grantUserPoints({
+    userId: id,
+    operatorUserId: operator.id,
+    points,
+  });
+
+  if (!result) throw new NotFoundError('user not found');
+
+  return c.json(
+    {
+      userId: id,
+      grantedPoints: points,
+      balance: result.balance,
+      transactionId: result.transactionId,
+    },
+    201,
+  );
 });

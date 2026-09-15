@@ -1,10 +1,15 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
+import { pointBalances, users } from '../db/schema.js';
 
 export async function createUser() {
-  const [user] = await db.insert(users).values({ role: 'user' }).returning();
-  return user!;
+  return db.transaction(async (tx) => {
+    const [user] = await tx.insert(users).values({ role: 'user' }).returning();
+    if (!user) throw new Error('failed to create user');
+
+    await tx.insert(pointBalances).values({ userId: user.id });
+    return user;
+  });
 }
 
 export async function findUserById(id: string) {
