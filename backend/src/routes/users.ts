@@ -4,6 +4,7 @@ import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
+import { createIdentityCode } from '../services/identity.js';
 import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -21,23 +22,9 @@ const UserWithLoginTokenResponse = UserResponse.extend({
   token: LoginTokenResponse.shape.token,
   expiresAt: LoginTokenResponse.shape.expiresAt,
 });
-
-const updateMeRoute = createRoute({
-  method: 'patch',
-  path: '/me',
-  operationId: 'updateMe',
-  tags: ['Users'],
-  summary: '初回ログイン時に自分の表示名を設定する',
-  middleware: [requireRole('user')] as const,
-  request: {
-    body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
-  },
-  responses: {
-    200: { description: '更新成功', content: { 'application/json': { schema: UserResponse } } },
-    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
-    409: { description: '表示名は設定済み', content: { 'application/json': { schema: ErrorResponse } } },
-  },
+const IdentityCodeResponse = z.object({
+  code: z.string().openapi({ description: '識別用の動的QRコードに埋め込むコード' }),
+  expiresAt: z.date().openapi({ description: 'このコードが失効する時刻' }),
 });
 
 const createUserRoute = createRoute({
@@ -70,6 +57,38 @@ const issueUserLoginTokenRoute = createRoute({
   },
 });
 
+const updateMeRoute = createRoute({
+  method: 'patch',
+  path: '/me',
+  operationId: 'updateMe',
+  tags: ['Users'],
+  summary: '初回ログイン時に自分の表示名を設定する',
+  middleware: [requireRole('user')] as const,
+  request: {
+    body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
+  },
+  responses: {
+    200: { description: '更新成功', content: { 'application/json': { schema: UserResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: '表示名は設定済み', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const getMyIdentityCodeRoute = createRoute({
+  method: 'get',
+  path: '/me/identity-code',
+  operationId: 'getMyIdentityCode',
+  tags: ['Users'],
+  summary: '自分の識別用動的QRコードを取得する',
+  middleware: [requireRole('user')] as const,
+  responses: {
+    200: { description: '取得成功', content: { 'application/json': { schema: IdentityCodeResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
 export const users = new OpenAPIHono();
 
 users.openapi(updateMeRoute, async (c) => {
@@ -96,4 +115,11 @@ users.openapi(issueUserLoginTokenRoute, async (c) => {
 
   const { token, expiresAt } = await createLoginToken(user.id);
   return c.json({ token, expiresAt }, 201);
+});
+
+users.openapi(getMyIdentityCodeRoute, async (c) => {
+  const authUser = c.get('user');
+
+  const { code, expiresAt } = createIdentityCode(authUser.id);
+  return c.json({ code, expiresAt }, 200);
 });
