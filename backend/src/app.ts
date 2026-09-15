@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { health } from './routes/health.js';
-import { clients } from './routes/clients.js';
+import { users } from './routes/users.js';
 import { sessions } from './routes/sessions.js';
 
 const base = new OpenAPIHono().basePath('/api');
@@ -26,7 +26,7 @@ base.onError((err, c) => {
   return c.json({ status: 'error' as const, message: 'internal server error' }, 500);
 });
 
-const routes = base.route('/', health).route('/clients', clients).route('/sessions', sessions);
+const routes = base.route('/', health).route('/users', users).route('/sessions', sessions);
 
 routes.doc('/openapi.json', {
   openapi: '3.1.0',
@@ -38,7 +38,7 @@ routes.doc('/openapi.json', {
   servers: [{ url: '/', description: '同一オリジン' }],
   tags: [
     { name: 'Health', description: '稼働確認' },
-    { name: 'Clients', description: 'クライアントアカウント' },
+    { name: 'Users', description: 'ユーザーアカウント' },
     { name: 'Sessions', description: 'ログインセッション' },
   ],
 });

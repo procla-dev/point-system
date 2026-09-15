@@ -1,14 +1,14 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
-import { loginTokens, users } from '../db/schema.js';
+import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
-import { createClient, findClientById, setClientDisplayName } from '../services/clients.js';
+import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
-const ClientResponse = createSelectSchema(users).pick({
+const UserResponse = createSelectSchema(usersTable).pick({
   id: true,
   displayName: true,
 });
@@ -21,67 +21,67 @@ const updateMeRoute = createRoute({
   method: 'patch',
   path: '/me',
   operationId: 'updateMe',
-  tags: ['Clients'],
+  tags: ['Users'],
   summary: '初回ログイン時に自分の表示名を設定する',
-  middleware: [requireRole('client')] as const,
+  middleware: [requireRole('user')] as const,
   request: {
     body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
   },
   responses: {
-    200: { description: '更新成功', content: { 'application/json': { schema: ClientResponse } } },
+    200: { description: '更新成功', content: { 'application/json': { schema: UserResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'クライアントではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
     409: { description: '表示名は設定済み', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
-const createClientRoute = createRoute({
+const createUserRoute = createRoute({
   method: 'post',
   path: '/',
-  operationId: 'createClient',
-  tags: ['Clients'],
-  summary: 'クライアントアカウントを発行する',
+  operationId: 'createUser',
+  tags: ['Users'],
+  summary: 'ユーザーアカウントを発行する',
   responses: {
-    201: { description: '作成成功', content: { 'application/json': { schema: ClientResponse } } },
+    201: { description: '作成成功', content: { 'application/json': { schema: UserResponse } } },
   },
 });
 
 const issueLoginTokenRoute = createRoute({
   method: 'post',
   path: '/{id}/login-tokens',
-  operationId: 'issueClientLoginToken',
-  tags: ['Clients'],
-  summary: 'クライアントのログイン用トークンを発行する',
+  operationId: 'issueUserLoginToken',
+  tags: ['Users'],
+  summary: 'ユーザーのログイン用トークンを発行する',
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
     201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
-    404: { description: 'クライアントが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
-export const clients = new OpenAPIHono();
+export const users = new OpenAPIHono();
 
-clients.openapi(updateMeRoute, async (c) => {
-  const user = c.get('user');
+users.openapi(updateMeRoute, async (c) => {
+  const authUser = c.get('user');
   const { displayName } = c.req.valid('json');
 
-  const client = await setClientDisplayName(user.id, displayName);
-  if (!client) throw new ConflictError('display name is already set');
+  const user = await setUserDisplayName(authUser.id, displayName);
+  if (!user) throw new ConflictError('display name is already set');
 
-  return c.json({ id: client.id, displayName: client.displayName }, 200);
+  return c.json({ id: user.id, displayName: user.displayName }, 200);
 });
 
-clients.openapi(createClientRoute, async (c) => {
-  const { id, displayName } = await createClient();
+users.openapi(createUserRoute, async (c) => {
+  const { id, displayName } = await createUser();
   return c.json({ id, displayName }, 201);
 });
 
-clients.openapi(issueLoginTokenRoute, async (c) => {
+users.openapi(issueLoginTokenRoute, async (c) => {
   const { id } = c.req.valid('param');
 
-  const client = await findClientById(id);
-  if (!client) throw new NotFoundError('client not found');
+  const user = await findUserById(id);
+  if (!user) throw new NotFoundError('user not found');
 
-  const { token, expiresAt } = await createLoginToken(client.id);
+  const { token, expiresAt } = await createLoginToken(user.id);
   return c.json({ token, expiresAt }, 201);
 });
