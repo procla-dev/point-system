@@ -1,73 +1,85 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import QRCode from 'qrcode'
 
-type HealthState =
-  | { kind: 'loading' }
-  | { kind: 'ok'; label: string }
+type IssueState =
+  | { kind: 'idle' | 'loading' }
+  | { kind: 'ready'; qrCode: string }
   | { kind: 'error'; message: string }
 
-function useHealth(path: string): HealthState {
-  const [state, setState] = useState<HealthState>({ kind: 'loading' })
+async function getErrorMessage(response: Response, fallback: string) {
+  try {
+    const body = (await response.json()) as { message?: string }
+    if (body.message === 'login required') return 'スタッフとしてログインしてください。'
+    if (body.message === 'not allowed for this role') return 'この操作を行う権限がありません。'
+    return body.message ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+function StaffPage() {
+  const [state, setState] = useState<IssueState>({ kind: 'idle' })
+
+  async function createAccount() {
+    setState({ kind: 'loading' })
+    try {
+      const userResponse = await fetch('/api/users', { method: 'POST', credentials: 'include' })
+      if (!userResponse.ok) throw new Error(await getErrorMessage(userResponse, 'アカウントを作成できませんでした。'))
+
+      const user = (await userResponse.json()) as { id: string }
+      const tokenResponse = await fetch(`/api/users/${user.id}/login-tokens`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!tokenResponse.ok) throw new Error(await getErrorMessage(tokenResponse, 'QRコードを発行できませんでした。'))
+
+      const { token } = (await tokenResponse.json()) as { token: string }
+      const loginUrl = `${window.location.origin}/?token=${encodeURIComponent(token)}`
+      const qrCode = await QRCode.toDataURL(loginUrl, { width: 512, margin: 2 })
+      setState({ kind: 'ready', qrCode })
+    } catch (error) {
+      setState({ kind: 'error', message: error instanceof Error ? error.message : 'エラーが発生しました。' })
+    }
+  }
+
+  return (
+    <main>
+      <h1>参加者アカウント発行</h1>
+      <button onClick={() => void createAccount()} disabled={state.kind === 'loading'}>
+        {state.kind === 'loading' ? '発行中…' : 'アカウントを作成してQRを表示'}
+      </button>
+      {state.kind === 'ready' && <img src={state.qrCode} alt="ログイン用QRコード" />}
+      {state.kind === 'error' && <p role="alert">{state.message}</p>}
+    </main>
+  )
+}
+
+function LoginPage({ token }: { token: string }) {
+  const [message, setMessage] = useState('ログイン中…')
 
   useEffect(() => {
     const controller = new AbortController()
-
-    async function check() {
+    void (async () => {
       try {
-        const response = await fetch(path, { signal: controller.signal })
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-        const body: unknown = await response.json()
-        setState({ kind: 'ok', label: JSON.stringify(body) })
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return
-        }
-        setState({
-          kind: 'error',
-          message: error instanceof Error ? error.message : '不明なエラー',
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+          signal: controller.signal,
         })
+        setMessage(response.ok ? 'ログインしました。' : await getErrorMessage(response, 'ログインできませんでした。'))
+      } catch {
+        if (!controller.signal.aborted) setMessage('ログインできませんでした。')
       }
-    }
+    })()
+    return () => controller.abort()
+  }, [token])
 
-    void check()
-
-    return () => {
-      controller.abort()
-    }
-  }, [path])
-
-  return state
-}
-
-function HealthRow({ name, path }: { name: string; path: string }) {
-  const state = useHealth(path)
-
-  return (
-    <li className="flex items-center justify-between gap-4 border-b border-slate-200 py-3 last:border-b-0">
-      <span className="font-medium text-slate-700">{name}</span>
-      {state.kind === 'loading' && <span className="text-slate-500">確認中…</span>}
-      {state.kind === 'ok' && (
-        <span className="font-mono text-sm text-emerald-700">{state.label}</span>
-      )}
-      {state.kind === 'error' && (
-        <span className="font-mono text-sm text-red-700">{state.message}</span>
-      )}
-    </li>
-  )
+  return <main><p>{message}</p></main>
 }
 
 export default function App() {
-  return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">ポイントシステム</h1>
-        <p className="mt-1 text-slate-600">開発環境の疎通確認</p>
-      </header>
-      <ul className="rounded-lg border border-slate-200 bg-white px-4 shadow-sm">
-        <HealthRow name="Backend" path="/api/health" />
-        <HealthRow name="Database" path="/api/health/db" />
-      </ul>
-    </main>
-  )
+  const token = useMemo(() => new URLSearchParams(window.location.search).get('token'), [])
+  return token ? <LoginPage token={token} /> : <StaffPage />
 }
