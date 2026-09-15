@@ -27,6 +27,7 @@ services:
       PORT: 8787
       DATABASE_URL: postgres://${POSTGRES_USER:-point}:${POSTGRES_PASSWORD:-point}@db:5432/${POSTGRES_DB:-point_system}
       CORS_ORIGIN: http://localhost:5173
+      IDENTITY_CODE_SECRET: ${IDENTITY_CODE_SECRET}
     ports:
       - '${BACKEND_PORT:-8787}:8787'
     volumes:
