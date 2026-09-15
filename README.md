@@ -85,8 +85,11 @@ docker compose exec backend npm run db:studio
 | テーブル | 内容 |
 |---|---|
 | `users` | ユーザー / スタッフ / 管理者。役割と表示名を持つ |
+| `booths` | ブース |
+| `point_balances` | ユーザーごとの現在のポイント残高 |
+| `point_transactions` | ポイントの付与・消費履歴 |
 
-ブースやポイント履歴のテーブルは、仕様の詳細が固まってから追加する。
+ポイントを付与するAPIは `POST /api/users/{userId}/points`。スタッフがログイン中のユーザーを操作し、リクエストボディの `points` に正の整数を指定する。
 
 ### よく使うコマンド
 

@@ -4,6 +4,8 @@ import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
+import { grantUserPoints } from '../services/points.js';
+import { createIdentityCode } from '../services/identity.js';
 import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -16,6 +18,52 @@ const UserResponse = createSelectSchema(usersTable).pick({
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
+
+const PointGrantResponse = z.object({
+  userId: z.uuid(),
+  grantedPoints: z.number().int().positive(),
+  balance: z.number().int().nonnegative(),
+  transactionId: z.uuid(),
+});
+
+const UserWithLoginTokenResponse = UserResponse.extend({
+  token: LoginTokenResponse.shape.token,
+  expiresAt: LoginTokenResponse.shape.expiresAt,
+});
+const IdentityCodeResponse = z.object({
+  code: z.string().openapi({ description: '識別用の動的QRコードに埋め込むコード' }),
+  expiresAt: z.date().openapi({ description: 'このコードが失効する時刻' }),
+});
+
+const createUserRoute = createRoute({
+  method: 'post',
+  path: '/',
+  operationId: 'createUser',
+  tags: ['Users'],
+  summary: 'ユーザーアカウントとログイントークンを発行する',
+  middleware: [requireRole('staff')] as const,
+  responses: {
+    201: { description: '作成成功', content: { 'application/json': { schema: UserWithLoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const issueUserLoginTokenRoute = createRoute({
+  method: 'post',
+  path: '/{id}/login-tokens',
+  operationId: 'issueUserLoginToken',
+  tags: ['Users'],
+  summary: '指定したユーザーのログイントークンを発行する',
+  middleware: [requireRole('staff')] as const,
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: {
+    201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
 
 const updateMeRoute = createRoute({
   method: 'patch',
@@ -35,30 +83,40 @@ const updateMeRoute = createRoute({
   },
 });
 
-const createUserRoute = createRoute({
-  method: 'post',
-  path: '/',
-  operationId: 'createUser',
+const getMyIdentityCodeRoute = createRoute({
+  method: 'get',
+  path: '/me/identity-code',
+  operationId: 'getMyIdentityCode',
   tags: ['Users'],
-  summary: 'ユーザーアカウントを発行する',
-  middleware: [requireRole('staff')] as const,
+  summary: '自分の識別用動的QRコードを取得する',
+  middleware: [requireRole('user')] as const,
   responses: {
-    201: { description: '作成成功', content: { 'application/json': { schema: UserResponse } } },
+    200: { description: '取得成功', content: { 'application/json': { schema: IdentityCodeResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
-const issueLoginTokenRoute = createRoute({
+const grantUserPointsRoute = createRoute({
   method: 'post',
-  path: '/{id}/login-tokens',
-  operationId: 'issueUserLoginToken',
+  path: '/{id}/points',
+  operationId: 'grantUserPoints',
   tags: ['Users'],
-  summary: 'ユーザーのログイン用トークンを発行する',
+  summary: 'ユーザーにポイントを付与する',
   middleware: [requireRole('staff')] as const,
-  request: { params: z.object({ id: z.uuid() }) },
+  request: {
+    params: z.object({ id: z.uuid() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({ points: z.number().int().positive() }),
+        },
+      },
+    },
+  },
   responses: {
-    201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    201: { description: '付与成功', content: { 'application/json': { schema: PointGrantResponse } } },
+    400: { description: 'ポイント数が正の整数ではない', content: { 'application/json': { schema: ErrorResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
@@ -79,15 +137,47 @@ users.openapi(updateMeRoute, async (c) => {
 
 users.openapi(createUserRoute, async (c) => {
   const { id, displayName } = await createUser();
-  return c.json({ id, displayName }, 201);
+  const { token, expiresAt } = await createLoginToken(id);
+
+  return c.json({ id, displayName, token, expiresAt }, 201);
 });
 
-users.openapi(issueLoginTokenRoute, async (c) => {
+users.openapi(issueUserLoginTokenRoute, async (c) => {
   const { id } = c.req.valid('param');
-
   const user = await findUserById(id);
   if (!user) throw new NotFoundError('user not found');
 
   const { token, expiresAt } = await createLoginToken(user.id);
   return c.json({ token, expiresAt }, 201);
+});
+
+users.openapi(grantUserPointsRoute, async (c) => {
+  const { id } = c.req.valid('param');
+  const { points } = c.req.valid('json');
+  const operator = c.get('user');
+
+  const result = await grantUserPoints({
+    userId: id,
+    operatorUserId: operator.id,
+    points,
+  });
+
+  if (!result) throw new NotFoundError('user not found');
+
+  return c.json(
+    {
+      userId: id,
+      grantedPoints: points,
+      balance: result.balance,
+      transactionId: result.transactionId,
+    },
+    201,
+  );
+});
+
+users.openapi(getMyIdentityCodeRoute, async (c) => {
+  const authUser = c.get('user');
+
+  const { code, expiresAt } = createIdentityCode(authUser.id);
+  return c.json({ code, expiresAt }, 200);
 });

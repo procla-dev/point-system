@@ -1,6 +1,6 @@
 {
-  "id": "4d01fea0-1608-42d6-b849-720b5ac1034d",
-  "prevId": "fea3a2d0-b1fb-4b15-b16d-0af542a4d8a4",
+  "id": "7ca9ea25-8966-45f1-8484-443a9c5c63c6",
+  "prevId": "4d01fea0-1608-42d6-b849-720b5ac1034d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -320,6 +320,65 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.staff": {
+      "name": "staff",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "booth_id": {
+          "name": "booth_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "staff_user_id_users_id_fk": {
+          "name": "staff_user_id_users_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_booth_id_booths_id_fk": {
+          "name": "staff_booth_id_booths_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "booths",
+          "columnsFrom": [
+            "booth_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.users": {
       "name": "users",
       "schema": "",
@@ -344,12 +403,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "booth_id": {
-          "name": "booth_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -359,21 +412,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "users_booth_id_booths_id_fk": {
-          "name": "users_booth_id_booths_id_fk",
-          "tableFrom": "users",
-          "tableTo": "booths",
-          "columnsFrom": [
-            "booth_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

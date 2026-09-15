@@ -11,7 +11,5 @@ export async function createStaff() {
 }
 
 export async function findStaffById(id: string) {
-  return db.query.users.findFirst({
-    where: and(eq(users.id, id), eq(users.role, 'staff')),
-  });
+  return db.query.users.findFirst({ where: and(eq(users.id, id), eq(users.role, 'staff')) });
 }

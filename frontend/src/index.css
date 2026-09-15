@@ -1,1 +1,37 @@
 @import 'tailwindcss';
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+main {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+h1 {
+  font-size: 24px;
+}
+
+button {
+  padding: 10px 16px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+img {
+  display: block;
+  width: 320px;
+  max-width: 100%;
+  margin-top: 24px;
+}
+
+[role='alert'] {
+  color: #c00;
+}

@@ -7,6 +7,7 @@ import { health } from './routes/health.js';
 import { users } from './routes/users.js';
 import { staff } from './routes/staff.js';
 import { sessions } from './routes/sessions.js';
+import { admins } from './routes/admins.js';
 
 const base = new OpenAPIHono().basePath('/api');
 
@@ -27,7 +28,12 @@ base.onError((err, c) => {
   return c.json({ status: 'error' as const, message: 'internal server error' }, 500);
 });
 
-const routes = base.route('/', health).route('/users', users).route('/sessions', sessions).route('/staff', staff);
+const routes = base
+  .route('/', health)
+  .route('/users', users)
+  .route('/sessions', sessions)
+  .route('/staff', staff)
+  .route('/admins', admins);
 
 routes.doc('/openapi.json', {
   openapi: '3.1.0',
@@ -42,6 +48,7 @@ routes.doc('/openapi.json', {
     { name: 'Users', description: 'ユーザーアカウント' },
     { name: 'Sessions', description: 'ログインセッション' },
     { name: 'Staff', description: 'スタッフアカウント' },
+    { name: 'Admins', description: '管理者アカウント' },
   ],
 });
 
