@@ -41,8 +41,11 @@ const createUserRoute = createRoute({
   operationId: 'createUser',
   tags: ['Users'],
   summary: 'ユーザーアカウントを発行する',
+  middleware: [requireRole('staff')] as const,
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: UserResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -52,9 +55,12 @@ const issueLoginTokenRoute = createRoute({
   operationId: 'issueUserLoginToken',
   tags: ['Users'],
   summary: 'ユーザーのログイン用トークンを発行する',
+  middleware: [requireRole('staff')] as const,
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
     201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });

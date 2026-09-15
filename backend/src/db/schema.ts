@@ -9,6 +9,8 @@ export const users = pgTable('users', {
   role: userRole('role').notNull(),
   /** ユーザーが初回ログイン時に自由入力する表示名。発行直後は null */
   displayName: text('display_name'),
+  /** staffの担当ブース。staff以外はnull。項目が増えたら別テーブルに切り出す */
+  boothId: uuid('booth_id').references(() => booths.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -28,9 +30,16 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const booths = pgTable('booths', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const usersRelations = relations(users, ({ many, one }) => ({
   loginTokens: many(loginTokens),
   sessions: many(sessions),
+  booth: one(booths, { fields: [users.boothId], references: [booths.id] }),
 }));
 
 export const loginTokensRelations = relations(loginTokens, ({ one }) => ({
@@ -39,4 +48,8 @@ export const loginTokensRelations = relations(loginTokens, ({ one }) => ({
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const boothsRelations = relations(booths, ({ many }) => ({
+  users: many(users),
 }));
