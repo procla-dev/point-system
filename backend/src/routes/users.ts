@@ -18,6 +18,10 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
 
+const UserWithLoginTokenResponse = UserResponse.extend({
+  token: LoginTokenResponse.shape.token,
+  expiresAt: LoginTokenResponse.shape.expiresAt,
+});
 const IdentityCodeResponse = z.object({
   code: z.string().openapi({ description: '識別用の動的QRコードに埋め込むコード' }),
   expiresAt: z.date().openapi({ description: 'このコードが失効する時刻' }),
@@ -28,21 +32,21 @@ const createUserRoute = createRoute({
   path: '/',
   operationId: 'createUser',
   tags: ['Users'],
-  summary: 'ユーザーアカウントを発行する',
+  summary: 'ユーザーアカウントとログイントークンを発行する',
   middleware: [requireRole('staff')] as const,
   responses: {
-    201: { description: '作成成功', content: { 'application/json': { schema: UserResponse } } },
+    201: { description: '作成成功', content: { 'application/json': { schema: UserWithLoginTokenResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
-const issueLoginTokenRoute = createRoute({
+const issueUserLoginTokenRoute = createRoute({
   method: 'post',
   path: '/{id}/login-tokens',
   operationId: 'issueUserLoginToken',
   tags: ['Users'],
-  summary: 'ユーザーのログイン用トークンを発行する',
+  summary: '指定したユーザーのログイントークンを発行する',
   middleware: [requireRole('staff')] as const,
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
@@ -99,12 +103,13 @@ users.openapi(updateMeRoute, async (c) => {
 
 users.openapi(createUserRoute, async (c) => {
   const { id, displayName } = await createUser();
-  return c.json({ id, displayName }, 201);
+  const { token, expiresAt } = await createLoginToken(id);
+
+  return c.json({ id, displayName, token, expiresAt }, 201);
 });
 
-users.openapi(issueLoginTokenRoute, async (c) => {
+users.openapi(issueUserLoginTokenRoute, async (c) => {
   const { id } = c.req.valid('param');
-
   const user = await findUserById(id);
   if (!user) throw new NotFoundError('user not found');
 

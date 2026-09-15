@@ -8,9 +8,7 @@ export async function createUser() {
 }
 
 export async function findUserById(id: string) {
-  return db.query.users.findFirst({
-    where: and(eq(users.id, id), eq(users.role, 'user')),
-  });
+  return db.query.users.findFirst({ where: and(eq(users.id, id), eq(users.role, 'user')) });
 }
 
 export async function setUserDisplayName(id: string, displayName: string) {

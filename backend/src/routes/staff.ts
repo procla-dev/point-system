@@ -4,7 +4,6 @@ import { users, loginTokens } from '../db/schema.js';
 import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
-import { findBoothById } from '../services/booths.js';
 import { createStaff, findStaffById } from '../services/staff.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -18,17 +17,22 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
 
+const StaffWithLoginTokenResponse = StaffResponse.extend({
+  token: LoginTokenResponse.shape.token,
+  expiresAt: LoginTokenResponse.shape.expiresAt,
+});
+
 const createStaffRoute = createRoute({
   method: 'post',
   path: '/',
   operationId: 'createStaff',
   tags: ['Staff'],
-  summary: 'スタッフアカウントを発行する',
+  summary: 'スタッフアカウントとログイントークンを発行する',
   middleware: [requireRole('admin')] as const,
-  request: { body: { content: { 'application/json': { schema: z.object({ boothId: z.uuid() }) } } } },
   responses: {
-    201: { description: '作成成功', content: { 'application/json': { schema: StaffResponse } } },
-    404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+    201: { description: '作成成功', content: { 'application/json': { schema: StaffWithLoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -37,11 +41,13 @@ const issueStaffLoginTokenRoute = createRoute({
   path: '/{id}/login-tokens',
   operationId: 'issueStaffLoginToken',
   tags: ['Staff'],
-  summary: 'スタッフのログイン用トークンを発行する',
+  summary: '指定したスタッフのログイントークンを発行する',
   middleware: [requireRole('admin')] as const,
   request: { params: z.object({ id: z.uuid() }) },
   responses: {
     201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'スタッフが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
@@ -49,18 +55,14 @@ const issueStaffLoginTokenRoute = createRoute({
 export const staff = new OpenAPIHono();
 
 staff.openapi(createStaffRoute, async (c) => {
-  const { boothId } = c.req.valid('json');
+  const newStaff = await createStaff();
+  const { token, expiresAt } = await createLoginToken(newStaff.id);
 
-  const booth = await findBoothById(boothId);
-  if (!booth) throw new NotFoundError('booth not found');
-
-  const newStaff = await createStaff(boothId);
-  return c.json({ id: newStaff.id, boothId: newStaff.boothId }, 201);
+  return c.json({ id: newStaff.id, boothId: newStaff.boothId, token, expiresAt }, 201);
 });
 
 staff.openapi(issueStaffLoginTokenRoute, async (c) => {
   const { id } = c.req.valid('param');
-
   const targetStaff = await findStaffById(id);
   if (!targetStaff) throw new NotFoundError('staff not found');
 
