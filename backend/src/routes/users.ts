@@ -1,10 +1,10 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
-import { ErrorResponse, ConflictError } from '../errors.js';
+import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
-import { createUser, setUserDisplayName } from '../services/users.js';
+import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -54,6 +54,22 @@ const createUserRoute = createRoute({
   },
 });
 
+const issueUserLoginTokenRoute = createRoute({
+  method: 'post',
+  path: '/{id}/login-tokens',
+  operationId: 'issueUserLoginToken',
+  tags: ['Users'],
+  summary: '指定したユーザーのログイントークンを発行する',
+  middleware: [requireRole('staff')] as const,
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: {
+    201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
 export const users = new OpenAPIHono();
 
 users.openapi(updateMeRoute, async (c) => {
@@ -71,4 +87,13 @@ users.openapi(createUserRoute, async (c) => {
   const { token, expiresAt } = await createLoginToken(id);
 
   return c.json({ id, displayName, token, expiresAt }, 201);
+});
+
+users.openapi(issueUserLoginTokenRoute, async (c) => {
+  const { id } = c.req.valid('param');
+  const user = await findUserById(id);
+  if (!user) throw new NotFoundError('user not found');
+
+  const { token, expiresAt } = await createLoginToken(user.id);
+  return c.json({ token, expiresAt }, 201);
 });
