@@ -29,6 +29,13 @@
       "when": 1789442842026,
       "tag": "0003_booths",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789454495820,
+      "tag": "0004_staff_booth_table",
+      "breakpoints": true
     }
   ]
 }

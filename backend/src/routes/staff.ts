@@ -4,15 +4,13 @@ import { users, loginTokens } from '../db/schema.js';
 import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
-import { findBoothById } from '../services/booths.js';
 import { createStaff, findStaffById } from '../services/staff.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
-const StaffResponse = createSelectSchema(users).pick({
-  id: true,
-  boothId: true,
-});
+const StaffResponse = createSelectSchema(users)
+  .pick({ id: true })
+  .extend({ boothId: z.uuid().nullable() });
 
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
@@ -25,10 +23,8 @@ const createStaffRoute = createRoute({
   tags: ['Staff'],
   summary: 'スタッフアカウントを発行する',
   middleware: [requireRole('admin')] as const,
-  request: { body: { content: { 'application/json': { schema: z.object({ boothId: z.uuid() }) } } } },
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: StaffResponse } } },
-    404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -49,12 +45,7 @@ const issueStaffLoginTokenRoute = createRoute({
 export const staff = new OpenAPIHono();
 
 staff.openapi(createStaffRoute, async (c) => {
-  const { boothId } = c.req.valid('json');
-
-  const booth = await findBoothById(boothId);
-  if (!booth) throw new NotFoundError('booth not found');
-
-  const newStaff = await createStaff(boothId);
+  const newStaff = await createStaff();
   return c.json({ id: newStaff.id, boothId: newStaff.boothId }, 201);
 });
 
