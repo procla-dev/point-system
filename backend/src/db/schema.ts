@@ -1,5 +1,5 @@
-import { relations } from 'drizzle-orm';
-import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { check, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
 export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
@@ -30,6 +30,35 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** ユーザーの現在のポイント残高 */
+export const pointBalances = pgTable(
+  'point_balances',
+  {
+    userId: uuid('user_id').primaryKey().references(() => users.id),
+    balance: integer('balance').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check('point_balances_balance_non_negative', sql`${table.balance} >= 0`)],
+);
+
+/** ポイントの付与・消費履歴 */
+export const pointTransactionType = pgEnum('point_transaction_type', ['grant', 'spend']);
+
+export const pointTransactions = pgTable(
+  'point_transactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    amount: integer('amount').notNull(),
+    type: pointTransactionType('type').notNull(),
+    operatorUserId: uuid('operator_user_id').notNull().references(() => users.id),
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check('point_transactions_amount_positive', sql`${table.amount} > 0`)],
+);
+
 export const booths = pgTable('booths', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -40,6 +69,9 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   loginTokens: many(loginTokens),
   sessions: many(sessions),
   booth: one(booths, { fields: [users.boothId], references: [booths.id] }),
+  pointBalance: one(pointBalances, { fields: [users.id], references: [pointBalances.userId] }),
+  pointTransactions: many(pointTransactions, { relationName: 'pointTransactionsUser' }),
+  operatedPointTransactions: many(pointTransactions, { relationName: 'pointTransactionsOperator' }),
 }));
 
 export const loginTokensRelations = relations(loginTokens, ({ one }) => ({
@@ -48,6 +80,23 @@ export const loginTokensRelations = relations(loginTokens, ({ one }) => ({
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const pointBalancesRelations = relations(pointBalances, ({ one }) => ({
+  user: one(users, { fields: [pointBalances.userId], references: [users.id] }),
+}));
+
+export const pointTransactionsRelations = relations(pointTransactions, ({ one }) => ({
+  user: one(users, {
+    fields: [pointTransactions.userId],
+    references: [users.id],
+    relationName: 'pointTransactionsUser',
+  }),
+  operator: one(users, {
+    fields: [pointTransactions.operatorUserId],
+    references: [users.id],
+    relationName: 'pointTransactionsOperator',
+  }),
 }));
 
 export const boothsRelations = relations(booths, ({ many }) => ({
