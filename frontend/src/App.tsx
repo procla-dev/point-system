@@ -26,14 +26,7 @@ function StaffPage() {
       const userResponse = await fetch('/api/users', { method: 'POST', credentials: 'include' })
       if (!userResponse.ok) throw new Error(await getErrorMessage(userResponse, 'アカウントを作成できませんでした。'))
 
-      const user = (await userResponse.json()) as { id: string }
-      const tokenResponse = await fetch(`/api/users/${user.id}/login-tokens`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      if (!tokenResponse.ok) throw new Error(await getErrorMessage(tokenResponse, 'QRコードを発行できませんでした。'))
-
-      const { token } = (await tokenResponse.json()) as { token: string }
+      const { token } = (await userResponse.json()) as { token: string }
       const loginUrl = `${window.location.origin}/?token=${encodeURIComponent(token)}`
       const qrCode = await QRCode.toDataURL(loginUrl, { width: 512, margin: 2 })
       setState({ kind: 'ready', qrCode })
