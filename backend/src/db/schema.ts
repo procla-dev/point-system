@@ -9,8 +9,6 @@ export const users = pgTable('users', {
   role: userRole('role').notNull(),
   /** ユーザーが初回ログイン時に自由入力する表示名。発行直後は null */
   displayName: text('display_name'),
-  /** staffの担当ブース。staff以外はnull。項目が増えたら別テーブルに切り出す */
-  boothId: uuid('booth_id').references(() => booths.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -65,10 +63,15 @@ export const booths = pgTable('booths', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const staff = pgTable('staff', {
+  userId: uuid('user_id').primaryKey().references(() => users.id),
+  boothId: uuid('booth_id').references(() => booths.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   loginTokens: many(loginTokens),
   sessions: many(sessions),
-  booth: one(booths, { fields: [users.boothId], references: [booths.id] }),
   pointBalance: one(pointBalances, { fields: [users.id], references: [pointBalances.userId] }),
   pointTransactions: many(pointTransactions, { relationName: 'pointTransactionsUser' }),
   operatedPointTransactions: many(pointTransactions, { relationName: 'pointTransactionsOperator' }),
@@ -100,5 +103,10 @@ export const pointTransactionsRelations = relations(pointTransactions, ({ one })
 }));
 
 export const boothsRelations = relations(booths, ({ many }) => ({
-  users: many(users),
+  staff: many(staff),
+}));
+
+export const staffRelations = relations(staff, ({ one }) => ({
+  user: one(users, { fields: [staff.userId], references: [users.id] }),
+  booth: one(booths, { fields: [staff.boothId], references: [booths.id] }),
 }));

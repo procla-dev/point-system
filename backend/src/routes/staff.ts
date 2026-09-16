@@ -8,16 +8,11 @@ import { createStaff, findStaffById } from '../services/staff.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
-const StaffResponse = createSelectSchema(users).pick({
-  id: true,
-  boothId: true,
-});
-
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
 
-const StaffWithLoginTokenResponse = StaffResponse.extend({
+const StaffWithLoginTokenResponse = createSelectSchema(users).pick({ id: true }).extend({
   token: LoginTokenResponse.shape.token,
   expiresAt: LoginTokenResponse.shape.expiresAt,
 });
@@ -58,7 +53,7 @@ staff.openapi(createStaffRoute, async (c) => {
   const newStaff = await createStaff();
   const { token, expiresAt } = await createLoginToken(newStaff.id);
 
-  return c.json({ id: newStaff.id, boothId: newStaff.boothId, token, expiresAt }, 201);
+  return c.json({ id: newStaff.id, token, expiresAt }, 201);
 });
 
 staff.openapi(issueStaffLoginTokenRoute, async (c) => {

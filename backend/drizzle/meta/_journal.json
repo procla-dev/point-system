@@ -36,6 +36,13 @@
       "when": 1789451360193,
       "tag": "0004_sloppy_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789459889196,
+      "tag": "0005_staff_booth_table",
+      "breakpoints": true
     }
   ]
 }
