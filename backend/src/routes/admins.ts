@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
-import { loginTokens, users } from '../db/schema.js';
+import { loginTokens } from '../db/schema.js';
 import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createAdmin, findAdminById } from '../services/admins.js';
@@ -8,12 +8,10 @@ import { createLoginToken } from '../services/auth.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
-const AdminWithLoginTokenResponse = createSelectSchema(users)
-  .pick({ id: true })
-  .extend({
-    token: z.string().openapi({ description: '新しい管理者が初回ログインに使用するワンタイムトークン' }),
-    expiresAt: createSelectSchema(loginTokens).shape.expiresAt,
-  });
+const AdminWithLoginTokenResponse = z.object({
+  token: z.string().openapi({ description: '新しい管理者が初回ログインに使用するワンタイムトークン' }),
+  expiresAt: createSelectSchema(loginTokens).shape.expiresAt,
+});
 
 const createAdminRoute = createRoute({
   method: 'post',
@@ -50,7 +48,7 @@ const issueAdminLoginTokenRoute = createRoute({
   responses: {
     201: {
       description: '発行成功',
-      content: { 'application/json': { schema: AdminWithLoginTokenResponse.omit({ id: true }) } },
+      content: { 'application/json': { schema: AdminWithLoginTokenResponse } },
     },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
@@ -64,7 +62,7 @@ admins.openapi(createAdminRoute, async (c) => {
   const admin = await createAdmin();
   const { token, expiresAt } = await createLoginToken(admin.id);
 
-  return c.json({ id: admin.id, token, expiresAt }, 201);
+  return c.json({ token, expiresAt }, 201);
 });
 
 admins.openapi(issueAdminLoginTokenRoute, async (c) => {

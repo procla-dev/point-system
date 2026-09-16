@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
-import { users, loginTokens } from '../db/schema.js';
+import { loginTokens } from '../db/schema.js';
 import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
@@ -12,7 +12,7 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
 
-const StaffWithLoginTokenResponse = createSelectSchema(users).pick({ id: true }).extend({
+const StaffWithLoginTokenResponse = z.object({
   token: LoginTokenResponse.shape.token,
   expiresAt: LoginTokenResponse.shape.expiresAt,
 });
@@ -53,7 +53,7 @@ staff.openapi(createStaffRoute, async (c) => {
   const newStaff = await createStaff();
   const { token, expiresAt } = await createLoginToken(newStaff.id);
 
-  return c.json({ id: newStaff.id, token, expiresAt }, 201);
+  return c.json({ token, expiresAt }, 201);
 });
 
 staff.openapi(issueStaffLoginTokenRoute, async (c) => {

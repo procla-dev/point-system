@@ -11,7 +11,6 @@ import { createUser, findUserById, setUserDisplayName } from '../services/users.
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
 const UserResponse = createSelectSchema(usersTable).pick({
-  id: true,
   displayName: true,
 });
 
@@ -139,7 +138,7 @@ users.openapi(createUserRoute, async (c) => {
   const { id, displayName } = await createUser();
   const { token, expiresAt } = await createLoginToken(id);
 
-  return c.json({ id, displayName, token, expiresAt }, 201);
+  return c.json({ displayName, token, expiresAt }, 201);
 });
 
 users.openapi(issueUserLoginTokenRoute, async (c) => {
