@@ -39,7 +39,7 @@ const createUserRoute = createRoute({
   operationId: 'createUser',
   tags: ['Users'],
   summary: 'ユーザーアカウントとログイントークンを発行する',
-  middleware: [requireRole('staff')] as const,
+  middleware: [requireRole('staff', 'admin')] as const,
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: UserWithLoginTokenResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
@@ -53,7 +53,7 @@ const reissueUserLoginTokenRoute = createRoute({
   operationId: 'reissueUserLoginToken',
   tags: ['Users'],
   summary: '未使用トークンからユーザーのトークンを再発行する',
-  middleware: [requireRole('staff')] as const,
+  middleware: [requireRole('staff', 'admin')] as const,
   request: { body: { content: { 'application/json': { schema: z.object({ token: z.string().min(1) }) } } } },
   responses: {
     201: { description: '再発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
