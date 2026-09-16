@@ -1,12 +1,12 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
-import { ErrorResponse, ConflictError, NotFoundError } from '../errors.js';
+import { ErrorResponse, ConflictError, NotFoundError, UnauthorizedError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
-import { createLoginToken } from '../services/auth.js';
+import { createLoginToken, reissueLoginToken } from '../services/auth.js';
 import { grantUserPoints } from '../services/points.js';
 import { createIdentityCode } from '../services/identity.js';
-import { createUser, findUserById, setUserDisplayName } from '../services/users.js';
+import { createUser, setUserDisplayName } from '../services/users.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -48,19 +48,18 @@ const createUserRoute = createRoute({
   },
 });
 
-const issueUserLoginTokenRoute = createRoute({
+const reissueUserLoginTokenRoute = createRoute({
   method: 'post',
-  path: '/{id}/login-tokens',
-  operationId: 'issueUserLoginToken',
+  path: '/login-tokens/reissue',
+  operationId: 'reissueUserLoginToken',
   tags: ['Users'],
-  summary: '指定したユーザーのログイントークンを発行する',
+  summary: '未使用トークンからユーザーのトークンを再発行する',
   middleware: [requireRole('staff')] as const,
-  request: { params: z.object({ id: z.uuid() }) },
+  request: { body: { content: { 'application/json': { schema: z.object({ token: z.string().min(1) }) } } } },
   responses: {
-    201: { description: '発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
-    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    201: { description: '再発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
+    401: { description: 'トークンが無効または使用済み', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
-    404: { description: 'ユーザーが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -141,14 +140,13 @@ users.openapi(createUserRoute, async (c) => {
   return c.json({ displayName, token, expiresAt }, 201);
 });
 
-users.openapi(issueUserLoginTokenRoute, async (c) => {
-  const { id } = c.req.valid('param');
-  const user = await findUserById(id);
-  if (!user) throw new NotFoundError('user not found');
-
-  const { token, expiresAt } = await createLoginToken(user.id);
-  return c.json({ token, expiresAt }, 201);
+users.openapi(reissueUserLoginTokenRoute, async (c) => {
+  const { token } = c.req.valid('json');
+  const issued = await reissueLoginToken(token);
+  if (!issued) throw new UnauthorizedError('invalid or already used token');
+  return c.json(issued, 201);
 });
+
 
 users.openapi(grantUserPointsRoute, async (c) => {
   const { id } = c.req.valid('param');
