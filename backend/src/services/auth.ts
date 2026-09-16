@@ -23,6 +23,28 @@ export async function createLoginToken(userId: string) {
   return { token, expiresAt };
 }
 
+/** 未使用の旧トークンを無効化し、同じユーザーの新しいトークンを発行する。 */
+export async function reissueLoginToken(token: string, role: 'user' | 'staff' | 'admin') {
+  const oldTokenHash = hashToken(token);
+  const newToken = generateToken();
+  const expiresAt = new Date(Date.now() + LOGIN_TOKEN_TTL_MS);
+
+  return db.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ userId: loginTokens.userId })
+      .from(loginTokens)
+      .innerJoin(users, eq(loginTokens.userId, users.id))
+      .where(and(eq(loginTokens.tokenHash, oldTokenHash), isNull(loginTokens.usedAt), eq(users.role, role)))
+      .limit(1);
+    if (!target) return null;
+
+    await tx.update(loginTokens).set({ usedAt: new Date() }).where(eq(loginTokens.tokenHash, oldTokenHash));
+    await tx.insert(loginTokens).values({ userId: target.userId, tokenHash: hashToken(newToken), expiresAt });
+    return { token: newToken, expiresAt };
+  });
+}
+
+
 export async function consumeLoginToken(token: string) {
   const tokenHash = hashToken(token);
 
