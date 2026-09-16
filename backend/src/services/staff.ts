@@ -14,3 +14,7 @@ export async function setStaffBooth(userId: string, boothId: string | null) {
   const [updated] = await db.update(staffTable).set({ boothId }).where(eq(staffTable.userId, userId)).returning();
   return updated;
 }
+
+export async function findStaffByBoothId(boothId: string) {
+  return db.query.staff.findFirst({ where: eq(staffTable.boothId, boothId) });
+}
