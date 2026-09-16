@@ -5,7 +5,7 @@ import { ErrorResponse, NotFoundError, UnauthorizedError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
 import { findBoothById } from '../services/booths.js';
-import { createIdentityCode, verifyIdentityCode } from '../services/identity.js';
+import { verifyIdentityCode } from '../services/identity.js';
 import { createStaff, findStaffBoothByUserId, setStaffBooth } from '../services/staff.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -17,11 +17,6 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
 const StaffWithLoginTokenResponse = z.object({
   token: LoginTokenResponse.shape.token,
   expiresAt: LoginTokenResponse.shape.expiresAt,
-});
-
-const IdentityCodeResponse = z.object({
-  code: z.string().openapi({ description: '識別用の動的QRコードに埋め込むコード' }),
-  expiresAt: z.date().openapi({ description: 'このコードが失効する時刻' }),
 });
 
 const UpdateStaffBoothRequest = z.object({
@@ -42,20 +37,6 @@ const createStaffRoute = createRoute({
     201: { description: '作成成功', content: { 'application/json': { schema: StaffWithLoginTokenResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
-  },
-});
-
-const getMyIdentityCodeRoute = createRoute({
-  method: 'get',
-  path: '/me/identity-code',
-  operationId: 'getMyStaffIdentityCode',
-  tags: ['Staff'],
-  summary: '自分の識別用動的QRコードを取得する',
-  middleware: [requireRole('staff')] as const,
-  responses: {
-    200: { description: '取得成功', content: { 'application/json': { schema: IdentityCodeResponse } } },
-    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -96,13 +77,6 @@ staff.openapi(createStaffRoute, async (c) => {
   const { token, expiresAt } = await createLoginToken(newStaff.id);
 
   return c.json({ token, expiresAt }, 201);
-});
-
-staff.openapi(getMyIdentityCodeRoute, async (c) => {
-  const authUser = c.get('user');
-
-  const { code, expiresAt } = createIdentityCode(authUser.id);
-  return c.json({ code, expiresAt }, 200);
 });
 
 staff.openapi(getMyStaffBoothRoute, async (c) => {

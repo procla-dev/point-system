@@ -86,11 +86,11 @@ const getMyIdentityCodeRoute = createRoute({
   operationId: 'getMyIdentityCode',
   tags: ['Users'],
   summary: '自分の識別用動的QRコードを取得する',
-  middleware: [requireRole('user')] as const,
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
   responses: {
     200: { description: '取得成功', content: { 'application/json': { schema: IdentityCodeResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ログイン権限がない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
