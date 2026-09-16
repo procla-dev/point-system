@@ -105,7 +105,7 @@ const grantUserPointsRoute = createRoute({
     body: {
       content: {
         'application/json': {
-          schema: z.object({ identityCode: z.string().min(1), points: z.number().int().positive() }),
+          schema: z.object({ code: z.string().min(1), points: z.number().int().positive() }),
         },
       },
     },
@@ -146,9 +146,9 @@ users.openapi(reissueUserLoginTokenRoute, async (c) => {
 
 
 users.openapi(grantUserPointsRoute, async (c) => {
-  const { identityCode, points } = c.req.valid('json');
+  const { code, points } = c.req.valid('json');
   const operator = c.get('user');
-  const userId = verifyIdentityCode(identityCode);
+  const userId = verifyIdentityCode(code);
   if (!userId) throw new UnauthorizedError('invalid identity code');
 
   const result = await grantUserPoints({
