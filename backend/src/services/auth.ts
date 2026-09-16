@@ -24,7 +24,7 @@ export async function createLoginToken(userId: string) {
 }
 
 /** 未使用の旧トークンを無効化し、同じユーザーの新しいトークンを発行する。 */
-export async function reissueLoginToken(token: string) {
+export async function reissueLoginToken(token: string, role: 'user' | 'staff' | 'admin') {
   const oldTokenHash = hashToken(token);
   const newToken = generateToken();
   const expiresAt = new Date(Date.now() + LOGIN_TOKEN_TTL_MS);
@@ -34,7 +34,7 @@ export async function reissueLoginToken(token: string) {
       .select({ userId: loginTokens.userId })
       .from(loginTokens)
       .innerJoin(users, eq(loginTokens.userId, users.id))
-      .where(and(eq(loginTokens.tokenHash, oldTokenHash), isNull(loginTokens.usedAt)))
+      .where(and(eq(loginTokens.tokenHash, oldTokenHash), isNull(loginTokens.usedAt), eq(users.role, role)))
       .limit(1);
     if (!target) return null;
 

@@ -142,7 +142,7 @@ users.openapi(createUserRoute, async (c) => {
 
 users.openapi(reissueUserLoginTokenRoute, async (c) => {
   const { token } = c.req.valid('json');
-  const issued = await reissueLoginToken(token);
+  const issued = await reissueLoginToken(token, 'user');
   if (!issued) throw new UnauthorizedError('invalid or already used token');
   return c.json(issued, 201);
 });
