@@ -18,3 +18,7 @@ export async function setStaffBooth(userId: string, boothId: string | null) {
 export async function findStaffByBoothId(boothId: string) {
   return db.query.staff.findFirst({ where: eq(staffTable.boothId, boothId) });
 }
+
+export async function findStaffBoothByUserId(userId: string) {
+  return db.query.staff.findFirst({ where: eq(staffTable.userId, userId), with: { booth: true } });
+}
