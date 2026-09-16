@@ -6,8 +6,9 @@ import { logger } from 'hono/logger';
 import { health } from './routes/health.js';
 import { users } from './routes/users.js';
 import { staff } from './routes/staff.js';
-import { sessions } from './routes/sessions.js';
 import { admins } from './routes/admins.js';
+import { booths } from './routes/booths.js';
+import { sessions } from './routes/sessions.js';
 
 const base = new OpenAPIHono().basePath('/api');
 
@@ -31,9 +32,10 @@ base.onError((err, c) => {
 const routes = base
   .route('/', health)
   .route('/users', users)
-  .route('/sessions', sessions)
   .route('/staff', staff)
-  .route('/admins', admins);
+  .route('/admins', admins)
+  .route('/booths', booths)
+  .route('/sessions', sessions);
 
 routes.doc('/openapi.json', {
   openapi: '3.1.0',
