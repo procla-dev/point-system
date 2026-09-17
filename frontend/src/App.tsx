@@ -6,13 +6,15 @@ import StaffPage from './pages/StaffPage'
 import StaffPointsPage from './pages/StaffPointsPage'
 import RouteErrorPage from './components/RouteErrorPage'
 
+type Role = 'user' | 'staff' | 'admin'
+
 function LoginRoute() {
   const [params] = useSearchParams()
   const token = params.get('token')
   return token ? <LoginPage token={token} /> : <HomePage />
 }
 
-async function requireRole(roles: string[]) {
+async function requireRole(roles: Role[]) {
   let response: Response
   try {
     response = await fetch('/api/users/me', { credentials: 'include' })
@@ -20,7 +22,7 @@ async function requireRole(roles: string[]) {
     throw new Error('failed to check authorization')
   }
   if (!response.ok) throw redirect('/')
-  const user = (await response.json()) as { role: string }
+  const user = (await response.json()) as { role: Role }
   if (!roles.includes(user.role)) throw redirect('/')
   return null
 }
