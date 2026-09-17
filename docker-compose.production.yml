@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-point}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-point_system}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://point.procla.dev}
+      IDENTITY_CODE_SECRET: ${IDENTITY_CODE_SECRET:?IDENTITY_CODE_SECRET must be set}
+    ports:
+      - '127.0.0.1:8787:8787'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8080:80'
+
+volumes:
+  db-data:

@@ -8,8 +8,10 @@ import { findStaffByBoothId } from '../services/staff.js';
 
 const { createInsertSchema, createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
-const BoothInsertRequest = createInsertSchema(boothsTable)
-  .pick({ name: true, kind: true })
+const BoothInsertRequest = z.object({
+  name: createInsertSchema(boothsTable).shape.name,
+  kind: createInsertSchema(boothsTable).shape.kind,
+})
   .openapi({ description: 'ブースの名前を指定して作成する' });
 
 const BoothUpdateRequest = z

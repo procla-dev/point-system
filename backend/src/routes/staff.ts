@@ -7,6 +7,7 @@ import { createLoginToken } from '../services/auth.js';
 import { findBoothById } from '../services/booths.js';
 import { verifyIdentityCode } from '../services/identity.js';
 import { createStaff, findStaffBoothByUserId, setStaffBooth } from '../services/staff.js';
+import { recordOperationLog } from '../services/operation-logs.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -75,6 +76,7 @@ export const staff = new OpenAPIHono();
 staff.openapi(createStaffRoute, async (c) => {
   const newStaff = await createStaff();
   const { token, expiresAt } = await createLoginToken(newStaff.id);
+  await recordOperationLog({ actorUserId: c.get('user').id, action: 'staff.create', targetUserId: newStaff.id });
 
   return c.json({ token, expiresAt }, 201);
 });

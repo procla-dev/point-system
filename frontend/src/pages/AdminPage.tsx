@@ -2,6 +2,8 @@ import { useState } from "react";
 import QRCode from "qrcode";
 import { getErrorMessage, type IssueState } from "../lib/shared";
 import IssueAccountResult from "../components/IssueAccountResult";
+import BoothManagement from "../components/BoothManagement";
+import StaffAssignment from "../components/StaffAssignment";
 
 export default function AdminPage() {
   const [state, setState] = useState<IssueState>({ kind: "idle" });
@@ -58,6 +60,8 @@ export default function AdminPage() {
         </button>
       </div>
       <IssueAccountResult state={state} />
+      <BoothManagement />
+      <StaffAssignment />
     </main>
   );
 }

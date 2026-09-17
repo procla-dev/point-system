@@ -1,13 +1,14 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
-import { ErrorResponse, ConflictError, NotFoundError, UnauthorizedError } from '../errors.js';
+import { ConflictError, ErrorResponse, NotFoundError, UnauthorizedError } from '../errors.js';
 import { requireBoothKind } from '../middleware/booth.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken, reissueLoginToken } from '../services/auth.js';
-import { getUserBalance, grantUserPoints } from '../services/points.js';
+import { getGrantPoints, getUserBalance, grantUserPoints, spendUserPoints } from '../services/points.js';
 import { createIdentityCode, verifyIdentityCode } from '../services/identity.js';
 import { createUser, setUserDisplayName } from '../services/users.js';
+import { recordOperationLog } from '../services/operation-logs.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -22,6 +23,11 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
 
 const PointGrantResponse = z.object({
   grantedPoints: z.number().int().positive(),
+  balance: z.number().int().nonnegative(),
+  transactionId: z.uuid(),
+});
+const PointSpendResponse = z.object({
+  spentPoints: z.number().int().positive(),
   balance: z.number().int().nonnegative(),
   transactionId: z.uuid(),
 });
@@ -121,21 +127,63 @@ const grantUserPointsRoute = createRoute({
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff', 'admin'), requireBoothKind('exhibitor')] as const,
+  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
   request: {
     body: {
       content: {
         'application/json': {
-          schema: z.object({ code: z.string().min(1), points: z.number().int().positive() }),
+          schema: z.object({ code: z.string().min(1) }),
         },
       },
     },
   },
   responses: {
     201: { description: '付与成功', content: { 'application/json': { schema: PointGrantResponse } } },
-    400: { description: 'ポイント数が正の整数ではない', content: { 'application/json': { schema: ErrorResponse } } },
     401: { description: '未ログインまたは識別コードが無効', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const spendUserPointsRoute = createRoute({
+  method: 'post',
+  path: '/points/spend',
+  operationId: 'spendUserPoints',
+  tags: ['Users'],
+  summary: 'ユーザーのポイントを差し引く',
+  middleware: [requireRole('staff'), requireBoothKind('exchanger')] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            code: z.string().min(1),
+            points: z.number().int().positive(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: '差し引き成功',
+      content: { 'application/json': { schema: PointSpendResponse } },
+    },
+    401: {
+      description: '未ログインまたは識別コードが無効',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: '交換所スタッフではない',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'ユーザーが見つからない',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    409: {
+      description: 'ポイント残高が不足している',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
   },
 });
 
@@ -159,6 +207,7 @@ users.openapi(updateMeRoute, async (c) => {
 users.openapi(createUserRoute, async (c) => {
   const { id, displayName } = await createUser();
   const { token, expiresAt } = await createLoginToken(id);
+  await recordOperationLog({ actorUserId: c.get('user').id, action: 'user.create', targetUserId: id });
 
   return c.json({ displayName, token, expiresAt }, 201);
 });
@@ -172,8 +221,9 @@ users.openapi(reissueUserLoginTokenRoute, async (c) => {
 
 
 users.openapi(grantUserPointsRoute, async (c) => {
-  const { code, points } = c.req.valid('json');
+  const { code } = c.req.valid('json');
   const operator = c.get('user');
+  const points = await getGrantPoints();
   const userId = verifyIdentityCode(code);
   if (!userId) throw new UnauthorizedError('invalid identity code');
 
@@ -184,10 +234,45 @@ users.openapi(grantUserPointsRoute, async (c) => {
   });
 
   if (!result) throw new NotFoundError('user not found');
+  await recordOperationLog({ actorUserId: operator.id, action: 'user.points.grant', targetUserId: userId, metadata: { points } });
 
   return c.json(
     {
       grantedPoints: points,
+      balance: result.balance,
+      transactionId: result.transactionId,
+    },
+    201,
+  );
+});
+
+users.openapi(spendUserPointsRoute, async (c) => {
+  const { code, points } = c.req.valid('json');
+  const operator = c.get('user');
+  const userId = verifyIdentityCode(code);
+  if (!userId) throw new UnauthorizedError('invalid identity code');
+
+  const result = await spendUserPoints({
+    userId,
+    operatorUserId: operator.id,
+    points,
+  });
+
+  if (result.status === 'not_found') throw new NotFoundError('user not found');
+  if (result.status === 'insufficient_balance') {
+    throw new ConflictError('insufficient point balance');
+  }
+
+  await recordOperationLog({
+    actorUserId: operator.id,
+    action: 'user.points.spend',
+    targetUserId: userId,
+    metadata: { points },
+  });
+
+  return c.json(
+    {
+      spentPoints: points,
       balance: result.balance,
       transactionId: result.transactionId,
     },
