@@ -111,7 +111,7 @@ const getMyIdentityCodeRoute = createRoute({
 
 const getMyPointsRoute = createRoute({
   method: 'get', path: '/me/points', operationId: 'getMyPoints', tags: ['Users'], summary: '自分のポイント残高を取得する',
-  middleware: [requireRole('user')] as const,
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
   responses: { 200: { description: '取得成功', content: { 'application/json': { schema: z.object({ balance: z.number().int().nonnegative() }) } } }, 401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } } },
 });
 
