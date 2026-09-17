@@ -22,7 +22,6 @@ function RoleRoute({ roles, children }: { roles: string[]; children: React.React
       setAllowed(roles.includes(user.role))
     })()
   }, [rolesKey])
-  if (allowed === null) return <main className="login-status"><p>確認中…</p></main>
   return allowed ? children : <Navigate to="/" replace />
 }
 
