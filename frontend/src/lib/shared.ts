@@ -2,7 +2,7 @@ export type Role = 'user' | 'staff' | 'admin'
 
 export type IssueState =
   | { kind: 'idle' | 'loading' }
-  | { kind: 'ready'; qrCode: string; loginUrl: string }
+  | { kind: 'ready'; qrCode: string; loginUrl: string; token: string }
   | { kind: 'error'; message: string }
 
 export async function getErrorMessage(response: Response, fallback: string) {
