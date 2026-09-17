@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminPage from "./AdminPage";
-import { getErrorMessage, type Role } from "./shared";
+import { getErrorMessage, type Role } from "../lib/shared";
 
 export default function LoginPage({ token }: { token: string }) {
   const navigate = useNavigate();

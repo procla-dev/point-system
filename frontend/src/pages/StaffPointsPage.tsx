@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { getErrorMessage } from './shared'
+import { getErrorMessage } from '../lib/shared'
 import QrCodeScanner from '../components/QrCodeScanner'
 
 export default function StaffPointsPage() {

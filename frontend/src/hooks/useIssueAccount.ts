@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import QRCode from 'qrcode'
-import { getErrorMessage, type IssueState } from '../pages/shared'
+import { getErrorMessage, type IssueState } from '../lib/shared'
 
 export function useIssueAccount() {
   const [state, setState] = useState<IssueState>({ kind: 'idle' })

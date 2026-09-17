@@ -1,4 +1,4 @@
-import type { IssueState } from '../pages/shared'
+import type { IssueState } from '../lib/shared'
 
 export default function IssueAccountResult({ state }: { state: IssueState }) {
   if (state.kind === 'loading') return <p>発行中…</p>

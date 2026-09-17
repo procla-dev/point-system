@@ -1,6 +1,6 @@
 import { useState } from "react";
 import QRCode from "qrcode";
-import { getErrorMessage, type IssueState } from "./shared";
+import { getErrorMessage, type IssueState } from "../lib/shared";
 import IssueAccountResult from "../components/IssueAccountResult";
 
 export default function AdminPage() {
