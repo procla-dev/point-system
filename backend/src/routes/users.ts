@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError, UnauthorizedError } from '../errors.js';
+import { requireBoothKind } from '../middleware/booth.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken, reissueLoginToken } from '../services/auth.js';
 import { grantUserPoints } from '../services/points.js';
@@ -39,11 +40,11 @@ const createUserRoute = createRoute({
   operationId: 'createUser',
   tags: ['Users'],
   summary: 'ユーザーアカウントとログイントークンを発行する',
-  middleware: [requireRole('staff', 'admin')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('entrance')] as const,
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: UserWithLoginTokenResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない、またはentranceブース担当ではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -86,11 +87,11 @@ const getMyIdentityCodeRoute = createRoute({
   operationId: 'getMyIdentityCode',
   tags: ['Users'],
   summary: '自分の識別用動的QRコードを取得する',
-  middleware: [requireRole('user')] as const,
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
   responses: {
     200: { description: '取得成功', content: { 'application/json': { schema: IdentityCodeResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'ログイン権限がない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -100,12 +101,12 @@ const grantUserPointsRoute = createRoute({
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff')] as const,
+  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
   request: {
     body: {
       content: {
         'application/json': {
-          schema: z.object({ identityCode: z.string().min(1), points: z.number().int().positive() }),
+          schema: z.object({ code: z.string().min(1), points: z.number().int().positive() }),
         },
       },
     },
@@ -146,9 +147,9 @@ users.openapi(reissueUserLoginTokenRoute, async (c) => {
 
 
 users.openapi(grantUserPointsRoute, async (c) => {
-  const { identityCode, points } = c.req.valid('json');
+  const { code, points } = c.req.valid('json');
   const operator = c.get('user');
-  const userId = verifyIdentityCode(identityCode);
+  const userId = verifyIdentityCode(code);
   if (!userId) throw new UnauthorizedError('invalid identity code');
 
   const result = await grantUserPoints({
