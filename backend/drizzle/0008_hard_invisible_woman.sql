@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "revoked_at" timestamp with time zone;

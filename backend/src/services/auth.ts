@@ -75,9 +75,18 @@ export async function getSessionUser(token: string) {
   const tokenHash = hashToken(token);
 
   const row = await db.query.sessions.findFirst({
-    where: and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, new Date())),
+    where: and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, new Date()), isNull(sessions.revokedAt)),
     with: { user: true },
   });
 
   return row?.user;
+}
+
+export async function revokeSessionsForUser(userId: string) {
+  const revoked = await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+    .returning({ id: sessions.id });
+  return revoked.length;
 }
