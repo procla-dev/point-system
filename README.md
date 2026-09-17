@@ -89,7 +89,7 @@ docker compose exec backend npm run db:studio
 | `point_balances` | ユーザーごとの現在のポイント残高 |
 | `point_transactions` | ポイントの付与・消費履歴 |
 
-ポイントを付与するAPIは `POST /api/users/{userId}/points`。スタッフがログイン中のユーザーを操作し、リクエストボディの `points` に正の整数を指定する。
+ポイントを付与するAPIは `POST /api/users/points`。スタッフがユーザーの動的QRコードに含まれる `code` と、付与する正の整数 `points` を送信する。QRコードはサーバー側で検証されるため、ユーザーIDを外部から指定する必要はない。
 
 ### よく使うコマンド
 

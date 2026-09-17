@@ -3,6 +3,7 @@ import { createSchemaFactory } from 'drizzle-zod';
 import { setCookie } from 'hono/cookie';
 import { users } from '../db/schema.js';
 import { ErrorResponse, UnauthorizedError } from '../errors.js';
+import { requireRole } from '../middleware/auth.js';
 import { consumeLoginToken, createSession, SESSION_COOKIE_NAME } from '../services/auth.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -28,6 +29,19 @@ const createSessionRoute = createRoute({
   },
 });
 
+const getCurrentSessionRoute = createRoute({
+  method: 'get',
+  path: '/me',
+  operationId: 'getCurrentSession',
+  tags: ['Sessions'],
+  summary: '現在のセッション情報を取得する',
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
+  responses: {
+    200: { description: '取得成功', content: { 'application/json': { schema: SessionResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
 export const sessions = new OpenAPIHono();
 
 sessions.openapi(createSessionRoute, async (c) => {
@@ -46,4 +60,9 @@ sessions.openapi(createSessionRoute, async (c) => {
   });
 
   return c.json({ role: user.role, displayName: user.displayName }, 201);
+});
+
+sessions.openapi(getCurrentSessionRoute, (c) => {
+  const user = c.get('user');
+  return c.json({ role: user.role, displayName: user.displayName }, 200);
 });

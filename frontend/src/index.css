@@ -3,16 +3,24 @@
 body {
   margin: 0;
   font-family: sans-serif;
+  color: #1f2937;
+  background: #f8fafc;
 }
 
 main {
-  max-width: 520px;
+  max-width: 560px;
   margin: 40px auto;
   padding: 0 16px;
 }
 
 h1 {
   font-size: 24px;
+  margin: 0 0 24px;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 0 0 12px;
 }
 
 button {
@@ -32,6 +40,43 @@ img {
   margin-top: 24px;
 }
 
+section {
+  margin-top: 24px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font: inherit;
+}
+
+.scanner video {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 16px;
+  background: #111827;
+}
+
 [role='alert'] {
   color: #c00;
+}
+
+[role='status'] {
+  color: #166534;
 }
