@@ -5,7 +5,7 @@ import { ErrorResponse, ConflictError, NotFoundError, UnauthorizedError } from '
 import { requireBoothKind } from '../middleware/booth.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken, reissueLoginToken } from '../services/auth.js';
-import { grantUserPoints } from '../services/points.js';
+import { getUserBalance, grantUserPoints } from '../services/points.js';
 import { createIdentityCode, verifyIdentityCode } from '../services/identity.js';
 import { createUser, setUserDisplayName } from '../services/users.js';
 
@@ -14,6 +14,7 @@ const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 const UserResponse = createSelectSchema(usersTable).pick({
   displayName: true,
 });
+const MeResponse = UserResponse.extend({ role: z.enum(['user', 'staff', 'admin']) });
 
 const LoginTokenResponse = createSelectSchema(loginTokens)
   .pick({ expiresAt: true })
@@ -69,15 +70,28 @@ const updateMeRoute = createRoute({
   operationId: 'updateMe',
   tags: ['Users'],
   summary: '初回ログイン時に自分の表示名を設定する',
-  middleware: [requireRole('user')] as const,
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
   request: {
     body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
   },
   responses: {
     200: { description: '更新成功', content: { 'application/json': { schema: UserResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: '表示名を設定できないロール', content: { 'application/json': { schema: ErrorResponse } } },
     409: { description: '表示名は設定済み', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const getMeRoute = createRoute({
+  method: 'get',
+  path: '/me',
+  operationId: 'getMe',
+  tags: ['Users'],
+  summary: 'ログイン中のユーザー情報を取得する',
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
+  responses: {
+    200: { description: '取得成功', content: { 'application/json': { schema: MeResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -95,13 +109,19 @@ const getMyIdentityCodeRoute = createRoute({
   },
 });
 
+const getMyPointsRoute = createRoute({
+  method: 'get', path: '/me/points', operationId: 'getMyPoints', tags: ['Users'], summary: '自分のポイント残高を取得する',
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
+  responses: { 200: { description: '取得成功', content: { 'application/json': { schema: z.object({ balance: z.number().int().nonnegative() }) } } }, 401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } } },
+});
+
 const grantUserPointsRoute = createRoute({
   method: 'post',
   path: '/points',
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('exhibitor')] as const,
   request: {
     body: {
       content: {
@@ -120,6 +140,11 @@ const grantUserPointsRoute = createRoute({
 });
 
 export const users = new OpenAPIHono();
+
+users.openapi(getMeRoute, async (c) => {
+  const user = c.get('user');
+  return c.json({ role: user.role, displayName: user.displayName }, 200);
+});
 
 users.openapi(updateMeRoute, async (c) => {
   const authUser = c.get('user');
@@ -176,3 +201,5 @@ users.openapi(getMyIdentityCodeRoute, async (c) => {
   const { code, expiresAt } = createIdentityCode(authUser.id);
   return c.json({ code, expiresAt }, 200);
 });
+
+users.openapi(getMyPointsRoute, async (c) => c.json({ balance: await getUserBalance(c.get('user').id) }, 200));
