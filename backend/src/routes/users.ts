@@ -121,7 +121,7 @@ const grantUserPointsRoute = createRoute({
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('exhibitor')] as const,
   request: {
     body: {
       content: {

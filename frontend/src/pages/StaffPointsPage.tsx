@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { getErrorMessage } from './shared'
+import QrCodeScanner from '../components/QrCodeScanner'
 
 export default function StaffPointsPage() {
   const [code, setCode] = useState('')
@@ -7,6 +8,7 @@ export default function StaffPointsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [scanning, setScanning] = useState(false)
 
   async function grantPoints(event: FormEvent) {
     event.preventDefault()
@@ -35,6 +37,10 @@ export default function StaffPointsPage() {
   return (
     <main>
       <h1>ポイント付与</h1>
+      <button type="button" onClick={() => setScanning((value) => !value)}>
+        {scanning ? 'カメラを閉じる' : 'QRコードをカメラで読み取る'}
+      </button>
+      {scanning && <QrCodeScanner onScan={(value) => { setCode(value); setScanning(false) }} />}
       <form onSubmit={(event) => void grantPoints(event)}>
         <p><label htmlFor="identity-code">ユーザー識別コード</label></p>
         <input id="identity-code" value={code} onChange={(event) => setCode(event.target.value)} required />
