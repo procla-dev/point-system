@@ -63,8 +63,33 @@ jobs:
 
       - name: Smoke test
         run: |
-          curl --fail --retry 10 --retry-delay 2 http://127.0.0.1:8787/api/health
-          curl --fail --retry 10 --retry-delay 2 http://127.0.0.1:8080/
+          set -eu
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8787/api/health; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Show service status on failure
+        if: failure()
+        run: |
+          docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" ps
+          docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" logs --tail=100 backend frontend db
 
       - name: Remove temporary deployment secrets
         if: always()
