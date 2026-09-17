@@ -4,16 +4,29 @@ import { getErrorMessage, type IssueState } from '../lib/shared'
 
 export function useIssueAccount() {
   const [state, setState] = useState<IssueState>({ kind: 'idle' })
+  async function createQr(token: string) {
+    const loginUrl = `${window.location.origin}/login?token=${encodeURIComponent(token)}`
+    const qrCode = await QRCode.toDataURL(loginUrl, { width: 512, margin: 2 })
+    setState({ kind: 'ready', qrCode, loginUrl, token })
+  }
   async function issue(path: string) {
     setState({ kind: 'loading' })
     try {
       const response = await fetch(path, { method: 'POST', credentials: 'include' })
       if (!response.ok) throw new Error(await getErrorMessage(response, 'アカウントを発行できませんでした。'))
       const { token } = (await response.json()) as { token: string }
-      const loginUrl = `${window.location.origin}/login?token=${encodeURIComponent(token)}`
-      const qrCode = await QRCode.toDataURL(loginUrl, { width: 512, margin: 2 })
-      setState({ kind: 'ready', qrCode, loginUrl })
+      await createQr(token)
     } catch (error) { setState({ kind: 'error', message: error instanceof Error ? error.message : 'エラーが発生しました。' }) }
   }
-  return { state, issue }
+  async function reissue() {
+    if (state.kind !== 'ready') return
+    setState({ kind: 'loading' })
+    try {
+      const response = await fetch('/api/users/login-tokens/reissue', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: state.token }) })
+      if (!response.ok) throw new Error(await getErrorMessage(response, 'トークンを再発行できませんでした。'))
+      const issued = await response.json() as { token: string }
+      await createQr(issued.token)
+    } catch (error) { setState({ kind: 'error', message: error instanceof Error ? error.message : 'エラーが発生しました。' }) }
+  }
+  return { state, issue, reissue }
 }

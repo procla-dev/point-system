@@ -33,6 +33,7 @@ export default function LoginPage({ token }: { token: string }) {
           role: Role;
           displayName: string | null;
         };
+        window.history.replaceState({}, '', window.location.pathname);
         setRole(session.role);
         if (session.displayName) {
           navigate(session.role === "admin" ? "/admin" : session.role === "staff" ? "/staff/entrance" : "/", { replace: true });

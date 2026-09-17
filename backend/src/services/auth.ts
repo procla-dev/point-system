@@ -6,6 +6,7 @@ import { users, loginTokens, sessions } from '../db/schema.js';
 export const SESSION_COOKIE_NAME = 'session';
 
 const LOGIN_TOKEN_TTL_MS = 5 * 60 * 1000;
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 const generateToken = (): string => randomBytes(32).toString('base64url');
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -64,6 +65,7 @@ export async function createSession(userId: string) {
   await db.insert(sessions).values({
     userId,
     tokenHash: hashToken(token),
+    expiresAt: new Date(Date.now() + SESSION_TTL_MS),
   });
 
   return token;
@@ -73,9 +75,18 @@ export async function getSessionUser(token: string) {
   const tokenHash = hashToken(token);
 
   const row = await db.query.sessions.findFirst({
-    where: eq(sessions.tokenHash, tokenHash),
+    where: and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, new Date()), isNull(sessions.revokedAt)),
     with: { user: true },
   });
 
   return row?.user;
+}
+
+export async function revokeSessionsForUser(userId: string) {
+  const revoked = await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+    .returning({ id: sessions.id });
+  return revoked.length;
 }

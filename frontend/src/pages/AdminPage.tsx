@@ -23,7 +23,7 @@ export default function AdminPage() {
         width: 512,
         margin: 2,
       });
-      setState({ kind: "ready", qrCode, loginUrl });
+      setState({ kind: "ready", qrCode, loginUrl, token });
     } catch (error) {
       setState({
         kind: "error",

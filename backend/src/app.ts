@@ -9,6 +9,7 @@ import { staff } from './routes/staff.js';
 import { admins } from './routes/admins.js';
 import { booths } from './routes/booths.js';
 import { sessions } from './routes/sessions.js';
+import { adminSessions } from './routes/admin-sessions.js';
 
 const base = new OpenAPIHono().basePath('/api');
 
@@ -36,6 +37,8 @@ const routes = base
   .route('/admins', admins)
   .route('/booths', booths)
   .route('/sessions', sessions);
+  
+routes.route('/admin/sessions', adminSessions);
 
 routes.doc('/openapi.json', {
   openapi: '3.1.0',
