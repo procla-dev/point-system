@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { pointBalances, pointTransactions, users } from '../db/schema.js';
+import { pointBalances, pointSettings, pointTransactions, users } from '../db/schema.js';
 
 type GrantUserPointsInput = {
   userId: string;
@@ -11,6 +11,18 @@ type GrantUserPointsInput = {
 export async function getUserBalance(userId: string) {
   const [balance] = await db.select({ balance: pointBalances.balance }).from(pointBalances).where(eq(pointBalances.userId, userId)).limit(1);
   return balance?.balance ?? 0;
+}
+
+export async function getGrantPoints() {
+  const [settings] = await db.select({ grantPoints: pointSettings.grantPoints }).from(pointSettings).where(eq(pointSettings.id, 1)).limit(1);
+  if (settings) return settings.grantPoints;
+  const [created] = await db.insert(pointSettings).values({ id: 1 }).returning({ grantPoints: pointSettings.grantPoints });
+  return created!.grantPoints;
+}
+
+export async function updateGrantPoints(grantPoints: number) {
+  const [settings] = await db.insert(pointSettings).values({ id: 1, grantPoints }).onConflictDoUpdate({ target: pointSettings.id, set: { grantPoints, updatedAt: new Date() } }).returning({ grantPoints: pointSettings.grantPoints });
+  return settings!.grantPoints;
 }
 
 export async function grantUserPoints({ userId, operatorUserId, points }: GrantUserPointsInput) {
