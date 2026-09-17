@@ -48,7 +48,9 @@ function StaffPage() {
 }
 
 function LoginPage({ token }: { token: string }) {
-  const [message, setMessage] = useState('ログイン中…')
+  const [message, setMessage] = useState<'logging-in' | 'name' | 'complete' | 'error'>('logging-in')
+  const [displayName, setDisplayName] = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -61,15 +63,53 @@ function LoginPage({ token }: { token: string }) {
           body: JSON.stringify({ token }),
           signal: controller.signal,
         })
-        setMessage(response.ok ? 'ログインしました。' : await getErrorMessage(response, 'ログインできませんでした。'))
+        if (!response.ok) {
+          setError(await getErrorMessage(response, 'ログインできませんでした。'))
+          setMessage('error')
+          return
+        }
+        const session = (await response.json()) as { role: 'user' | 'staff' | 'admin'; displayName: string | null }
+        setMessage(!session.displayName ? 'name' : 'complete')
       } catch {
-        if (!controller.signal.aborted) setMessage('ログインできませんでした。')
+        if (!controller.signal.aborted) {
+          setError('ログインできませんでした。')
+          setMessage('error')
+        }
       }
     })()
     return () => controller.abort()
   }, [token])
 
-  return <main><p>{message}</p></main>
+  async function submitName(event: React.FormEvent) {
+    event.preventDefault()
+    if (!displayName.trim()) return
+    const response = await fetch('/api/users/me', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: displayName.trim() }),
+    })
+    if (!response.ok) {
+      setError(await getErrorMessage(response, '表示名を保存できませんでした。'))
+      return
+    }
+    setMessage('complete')
+  }
+
+  if (message === 'logging-in') return <main className="login-status"><p>ログイン中…</p></main>
+  if (message === 'error') return <main className="login-status"><p role="alert">{error}</p></main>
+  if (message === 'complete') return <main className="login-status"><p>ログインしました。</p></main>
+
+  return (
+    <main className="name-page">
+      <h1>表示名を入力してください</h1>
+      <form className="name-card" onSubmit={(event) => void submitName(event)}>
+        <label htmlFor="display-name">表示名：</label>
+        <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoFocus maxLength={50} />
+        <button type="submit" disabled={!displayName.trim()}>入力を確定</button>
+      </form>
+    </main>
+  )
 }
 
 export default function App() {

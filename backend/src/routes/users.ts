@@ -69,14 +69,14 @@ const updateMeRoute = createRoute({
   operationId: 'updateMe',
   tags: ['Users'],
   summary: '初回ログイン時に自分の表示名を設定する',
-  middleware: [requireRole('user')] as const,
+  middleware: [requireRole('user', 'staff', 'admin')] as const,
   request: {
     body: { content: { 'application/json': { schema: z.object({ displayName: z.string().min(1).max(50) }) } } },
   },
   responses: {
     200: { description: '更新成功', content: { 'application/json': { schema: UserResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'ユーザーではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: '表示名を設定できないロール', content: { 'application/json': { schema: ErrorResponse } } },
     409: { description: '表示名は設定済み', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });

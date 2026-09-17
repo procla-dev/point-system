@@ -16,7 +16,7 @@ export async function setUserDisplayName(id: string, displayName: string) {
   const [user] = await db
     .update(users)
     .set({ displayName })
-    .where(and(eq(users.id, id), eq(users.role, 'user'), isNull(users.displayName)))
+    .where(and(eq(users.id, id), isNull(users.displayName)))
     .returning();
 
   return user;
