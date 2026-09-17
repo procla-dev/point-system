@@ -8,6 +8,11 @@ type GrantUserPointsInput = {
   points: number;
 };
 
+export async function getUserBalance(userId: string) {
+  const [balance] = await db.select({ balance: pointBalances.balance }).from(pointBalances).where(eq(pointBalances.userId, userId)).limit(1);
+  return balance?.balance ?? 0;
+}
+
 export async function grantUserPoints({ userId, operatorUserId, points }: GrantUserPointsInput) {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
