@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, Navigate, redirect, RouterProvider, useSearchParams } from 'react-router-dom'
 import AdminPage from './pages/AdminPage'
+import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import StaffPage from './pages/StaffPage'
-import HomePage from './pages/HomePage'
+import StaffPointsPage from './pages/StaffPointsPage'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -11,30 +11,23 @@ function LoginRoute() {
   return token ? <LoginPage token={token} /> : <HomePage />
 }
 
-function RoleRoute({ roles, children }: { roles: string[]; children: React.ReactNode }) {
-  const [allowed, setAllowed] = useState<boolean | null>(null)
-  const rolesKey = roles.join('|')
-  useEffect(() => {
-    void (async () => {
-      const response = await fetch('/api/users/me', { credentials: 'include' })
-      if (!response.ok) return setAllowed(false)
-      const user = (await response.json()) as { role: string }
-      setAllowed(roles.includes(user.role))
-    })()
-  }, [rolesKey])
-  return allowed ? children : <Navigate to="/" replace />
+async function requireRole(roles: string[]) {
+  const response = await fetch('/api/users/me', { credentials: 'include' })
+  if (!response.ok) throw redirect('/')
+  const user = (await response.json()) as { role: string }
+  if (!roles.includes(user.role)) throw redirect('/')
+  return null
 }
 
+const router = createBrowserRouter([
+  { path: '/', element: <LoginRoute /> },
+  { path: '/login', element: <LoginRoute /> },
+  { path: '/staff/entrance', loader: () => requireRole(['staff', 'admin']), element: <StaffPage /> },
+  { path: '/staff/point', loader: () => requireRole(['staff', 'admin']), element: <StaffPointsPage /> },
+  { path: '/admin', loader: () => requireRole(['admin']), element: <AdminPage /> },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginRoute />} />
-        <Route path="/staff/entrance" element={<RoleRoute roles={['staff', 'admin']}><StaffPage /></RoleRoute>} />
-        <Route path="/admin" element={<RoleRoute roles={['admin']}><AdminPage /></RoleRoute>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }

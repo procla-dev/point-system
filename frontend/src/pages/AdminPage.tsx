@@ -1,12 +1,10 @@
 import { useState } from "react";
 import QRCode from "qrcode";
 import { getErrorMessage, type IssueState } from "./shared";
-import { useAdminAuthorization } from "../hooks/useAdminAuthorization";
 import IssueAccountResult from "../components/IssueAccountResult";
 
 export default function AdminPage() {
   const [state, setState] = useState<IssueState>({ kind: "idle" });
-  const authorized = useAdminAuthorization();
 
   async function issueAccount(path: string) {
     setState({ kind: "loading" });
@@ -35,18 +33,6 @@ export default function AdminPage() {
     }
   }
 
-  if (authorized === null)
-    return (
-      <main className="login-status">
-        <p>確認中…</p>
-      </main>
-    );
-  if (!authorized)
-    return (
-      <main className="login-status">
-        <p>管理者としてログインしてください。</p>
-      </main>
-    );
   return (
     <main className="admin-page">
       <h1>管理者ページ</h1>
