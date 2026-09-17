@@ -1,10 +1,9 @@
 import { getCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
-import type { users } from '../db/schema.js';
+import type { AuthUser } from '../db/schema.js';
 import { ForbiddenError, UnauthorizedError } from '../errors.js';
 import { getSessionUser, SESSION_COOKIE_NAME } from '../services/auth.js';
 
-type AuthUser = typeof users.$inferSelect;
 type AuthEnv = { Variables: { user: AuthUser } };
 
 export const requireRole = (...roles: AuthUser['role'][]) =>

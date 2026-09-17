@@ -12,6 +12,8 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type AuthUser = typeof users.$inferSelect;
+
 export const loginTokens = pgTable('login_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
@@ -57,11 +59,16 @@ export const pointTransactions = pgTable(
   (table) => [check('point_transactions_amount_positive', sql`${table.amount} > 0`)],
 );
 
+export const boothKind = pgEnum('booth_kind', ['entrance', 'exhibitor', 'exchanger']);
+
 export const booths = pgTable('booths', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
+  kind: boothKind('kind').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type Booth = typeof booths.$inferSelect;
 
 export const staff = pgTable('staff', {
   userId: uuid('user_id').primaryKey().references(() => users.id),

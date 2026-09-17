@@ -9,16 +9,17 @@ import { findStaffByBoothId } from '../services/staff.js';
 const { createInsertSchema, createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
 const BoothInsertRequest = createInsertSchema(boothsTable)
-  .pick({ name: true })
+  .pick({ name: true, kind: true })
   .openapi({ description: 'ブースの名前を指定して作成する' });
 
 const BoothUpdateRequest = z
-  .object({ name: BoothInsertRequest.shape.name })
+  .object({ name: BoothInsertRequest.shape.name, kind: BoothInsertRequest.shape.kind })
   .openapi({ description: 'ブースの名前を指定して更新する' });
 
 const BoothResponse = createSelectSchema(boothsTable).pick({
   id: true,
   name: true,
+  kind: true,
 });
 
 const getBoothsRoute = createRoute({
@@ -122,20 +123,20 @@ booths.openapi(getBoothByIdRoute, async (c) => {
 });
 
 booths.openapi(createBoothRoute, async (c) => {
-  const { name } = c.req.valid('json');
-  const newBooth = await createBooth(name);
-  return c.json({ id: newBooth.id, name: newBooth.name }, 201);
+  const { name, kind } = c.req.valid('json');
+  const newBooth = await createBooth(name, kind);
+  return c.json({ id: newBooth.id, name: newBooth.name, kind: newBooth.kind }, 201);
 });
 
 booths.openapi(updateBoothRoute, async (c) => {
   const { id } = c.req.valid('param');
-  const { name } = c.req.valid('json');
+  const { name, kind } = c.req.valid('json');
 
   const booth = await findBoothById(id);
   if (!booth) throw new NotFoundError('booth not found');
 
-  const updatedBooth = await updateBooth(id, name);
-  return c.json({ id: updatedBooth.id, name: updatedBooth.name }, 200);
+  const updatedBooth = await updateBooth(id, name, kind);
+  return c.json({ id: updatedBooth.id, name: updatedBooth.name, kind: updatedBooth.kind }, 200);
 });
 
 booths.openapi(deleteBoothRoute, async (c) => {

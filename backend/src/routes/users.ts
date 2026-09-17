@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
 import { ErrorResponse, ConflictError, NotFoundError, UnauthorizedError } from '../errors.js';
+import { requireBoothKind } from '../middleware/booth.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken, reissueLoginToken } from '../services/auth.js';
 import { grantUserPoints } from '../services/points.js';
@@ -39,11 +40,11 @@ const createUserRoute = createRoute({
   operationId: 'createUser',
   tags: ['Users'],
   summary: 'ユーザーアカウントとログイントークンを発行する',
-  middleware: [requireRole('staff', 'admin')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('entrance')] as const,
   responses: {
     201: { description: '作成成功', content: { 'application/json': { schema: UserWithLoginTokenResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない、またはentranceブース担当ではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -100,7 +101,7 @@ const grantUserPointsRoute = createRoute({
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff')] as const,
+  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
   request: {
     body: {
       content: {
