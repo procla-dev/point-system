@@ -80,9 +80,9 @@ function QrScanner({ active, onCode }: { active: boolean; onCode: (code: string)
   if (!active) return null
 
   return (
-    <div className="scanner">
-      <video ref={videoRef} autoPlay muted playsInline aria-label="QRコード読み取りカメラ" />
-      {error && <p role="alert">{error}</p>}
+    <div className="mt-4">
+      <video className="block w-full max-w-[480px] bg-gray-900" ref={videoRef} autoPlay muted playsInline aria-label="QRコード読み取りカメラ" />
+      {error && <p className="text-[#c00]" role="alert">{error}</p>}
     </div>
   )
 }
@@ -153,13 +153,14 @@ function StaffDashboard() {
   const isSubmitting = grantState.kind === 'submitting'
 
   return (
-    <main>
-      <h1>スタッフ操作</h1>
+    <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800">
+      <h1 className="mb-6 text-2xl font-bold">スタッフ操作</h1>
 
-      <section>
-        <h2>ポイント付与</h2>
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-xl font-bold">ポイント付与</h2>
         <p>ユーザーの動的QRコードを読み取り、ポイント数を入力して付与します。</p>
         <button
+          className="cursor-pointer px-4 py-2.5 disabled:cursor-default"
           type="button"
           onClick={() => setScannerActive((current) => !current)}
           disabled={isSubmitting}
@@ -168,10 +169,11 @@ function StaffDashboard() {
         </button>
         <QrScanner active={scannerActive} onCode={handleCode} />
 
-        <form onSubmit={(event) => void grantPoints(event)}>
-          <label>
+        <form className="mt-4 grid gap-3" onSubmit={(event) => void grantPoints(event)}>
+          <label className="grid gap-1">
             QRコード（手入力可）
             <input
+              className="box-border w-full p-2"
               type="text"
               value={code}
               onChange={(event) => setCode(event.target.value)}
@@ -179,9 +181,10 @@ function StaffDashboard() {
               disabled={isSubmitting}
             />
           </label>
-          <label>
+          <label className="grid gap-1">
             付与ポイント数
             <input
+              className="box-border w-full p-2"
               type="number"
               min="1"
               step="1"
@@ -191,21 +194,21 @@ function StaffDashboard() {
               disabled={isSubmitting}
             />
           </label>
-          <button type="submit" disabled={isSubmitting}>
+          <button className="cursor-pointer px-4 py-2.5 disabled:cursor-default" type="submit" disabled={isSubmitting}>
             {isSubmitting ? '付与中…' : 'ポイントを付与する'}
           </button>
         </form>
-        {grantState.kind === 'success' && <p role="status">{grantState.message}</p>}
-        {grantState.kind === 'error' && <p role="alert">{grantState.message}</p>}
+        {grantState.kind === 'success' && <p className="text-green-800" role="status">{grantState.message}</p>}
+        {grantState.kind === 'error' && <p className="text-[#c00]" role="alert">{grantState.message}</p>}
       </section>
 
-      <section>
-        <h2>参加者アカウント発行</h2>
-        <button type="button" onClick={() => void createAccount()} disabled={accountState.kind === 'loading'}>
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-xl font-bold">参加者アカウント発行</h2>
+        <button className="cursor-pointer px-4 py-2.5 disabled:cursor-default" type="button" onClick={() => void createAccount()} disabled={accountState.kind === 'loading'}>
           {accountState.kind === 'loading' ? '発行中…' : 'アカウントを作成してQRを表示'}
         </button>
-        {accountState.kind === 'ready' && <img src={accountState.qrCode} alt="ログイン用QRコード" />}
-        {accountState.kind === 'error' && <p role="alert">{accountState.message}</p>}
+        {accountState.kind === 'ready' && <img className="mt-6 block w-80 max-w-full" src={accountState.qrCode} alt="ログイン用QRコード" />}
+        {accountState.kind === 'error' && <p className="text-[#c00]" role="alert">{accountState.message}</p>}
       </section>
     </main>
   )
@@ -277,13 +280,14 @@ function UserPage({ session, onSessionChange }: { session: Session; onSessionCha
 
   if (!session.displayName) {
     return (
-      <main>
-        <h1>表示名の設定</h1>
+      <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800">
+        <h1 className="mb-6 text-2xl font-bold">表示名の設定</h1>
         <p>ポイント画面で表示する名前を入力してください。</p>
-        <form onSubmit={(event) => void saveDisplayName(event)}>
-          <label>
+        <form className="mt-4 grid gap-3" onSubmit={(event) => void saveDisplayName(event)}>
+          <label className="grid gap-1">
             表示名
             <input
+              className="box-border w-full p-2"
               type="text"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
@@ -292,21 +296,21 @@ function UserPage({ session, onSessionChange }: { session: Session; onSessionCha
               disabled={isSavingName}
             />
           </label>
-          <button type="submit" disabled={isSavingName}>
+          <button className="cursor-pointer px-4 py-2.5 disabled:cursor-default" type="submit" disabled={isSavingName}>
             {isSavingName ? '保存中…' : '表示名を保存'}
           </button>
         </form>
-        {message && <p role="alert">{message}</p>}
+        {message && <p className="text-[#c00]" role="alert">{message}</p>}
       </main>
     )
   }
 
   return (
-    <main>
-      <h1>{session.displayName}さんのポイント</h1>
+    <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800">
+      <h1 className="mb-6 text-2xl font-bold">{session.displayName}さんのポイント</h1>
       <p>このQRコードをスタッフに提示してください。</p>
-      {qrCode && <img src={qrCode} alt="本人確認用の動的QRコード" />}
-      {message && <p role="alert">{message}</p>}
+      {qrCode && <img className="mt-6 block w-80 max-w-full" src={qrCode} alt="本人確認用の動的QRコード" />}
+      {message && <p className="text-[#c00]" role="alert">{message}</p>}
     </main>
   )
 }
@@ -316,7 +320,7 @@ function AuthenticatedPage({ session, onSessionChange }: { session: Session; onS
   if (session.role === 'staff') return <StaffDashboard />
 
   return (
-    <main>
+    <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800">
       <p>管理者画面はまだ利用できません。</p>
     </main>
   )
@@ -360,7 +364,7 @@ function LoginPage({ token }: { token: string }) {
   }, [token])
 
   if (session) return <AuthenticatedPage session={session} onSessionChange={setSession} />
-  return <main><p>{message}</p></main>
+  return <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800"><p>{message}</p></main>
 }
 
 export default function App() {
@@ -391,8 +395,8 @@ export default function App() {
   }, [token])
 
   if (token) return <LoginPage token={token} />
-  if (sessionError) return <main><p role="alert">{sessionError}</p></main>
-  if (session === undefined) return <main><p>読み込み中…</p></main>
+  if (sessionError) return <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800"><p className="text-[#c00]" role="alert">{sessionError}</p></main>
+  if (session === undefined) return <main className="mx-auto min-h-screen max-w-[560px] bg-slate-50 px-4 py-10 font-sans text-gray-800"><p>読み込み中…</p></main>
   if (!session) return <StaffDashboard />
   return <AuthenticatedPage session={session} onSessionChange={setSession} />
 }
