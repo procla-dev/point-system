@@ -1,78 +1,41 @@
-import { useEffect, useMemo, useState } from 'react'
-import QRCode from 'qrcode'
+import { createBrowserRouter, Navigate, redirect, RouterProvider, useSearchParams } from 'react-router-dom'
+import AdminPage from './pages/AdminPage'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import StaffPage from './pages/StaffPage'
+import StaffPointsPage from './pages/StaffPointsPage'
+import RouteErrorPage from './components/RouteErrorPage'
 
-type IssueState =
-  | { kind: 'idle' | 'loading' }
-  | { kind: 'ready'; qrCode: string }
-  | { kind: 'error'; message: string }
+type Role = 'user' | 'staff' | 'admin'
 
-async function getErrorMessage(response: Response, fallback: string) {
+function LoginRoute() {
+  const [params] = useSearchParams()
+  const token = params.get('token')
+  return token ? <LoginPage token={token} /> : <HomePage />
+}
+
+async function requireRole(roles: Role[]) {
+  let response: Response
   try {
-    const body = (await response.json()) as { message?: string }
-    if (body.message === 'login required') return 'スタッフとしてログインしてください。'
-    if (body.message === 'not allowed for this role') return 'この操作を行う権限がありません。'
-    return body.message ?? fallback
+    response = await fetch('/api/users/me', { credentials: 'include' })
   } catch {
-    return fallback
+    throw new Error('failed to check authorization')
   }
+  if (!response.ok) throw redirect('/')
+  const user = (await response.json()) as { role: Role }
+  if (!roles.includes(user.role)) throw redirect('/')
+  return null
 }
 
-function StaffPage() {
-  const [state, setState] = useState<IssueState>({ kind: 'idle' })
-
-  async function createAccount() {
-    setState({ kind: 'loading' })
-    try {
-      const userResponse = await fetch('/api/users', { method: 'POST', credentials: 'include' })
-      if (!userResponse.ok) throw new Error(await getErrorMessage(userResponse, 'アカウントを作成できませんでした。'))
-
-      const { token } = (await userResponse.json()) as { token: string }
-      const loginUrl = `${window.location.origin}/?token=${encodeURIComponent(token)}`
-      const qrCode = await QRCode.toDataURL(loginUrl, { width: 512, margin: 2 })
-      setState({ kind: 'ready', qrCode })
-    } catch (error) {
-      setState({ kind: 'error', message: error instanceof Error ? error.message : 'エラーが発生しました。' })
-    }
-  }
-
-  return (
-    <main>
-      <h1>参加者アカウント発行</h1>
-      <button onClick={() => void createAccount()} disabled={state.kind === 'loading'}>
-        {state.kind === 'loading' ? '発行中…' : 'アカウントを作成してQRを表示'}
-      </button>
-      {state.kind === 'ready' && <img src={state.qrCode} alt="ログイン用QRコード" />}
-      {state.kind === 'error' && <p role="alert">{state.message}</p>}
-    </main>
-  )
-}
-
-function LoginPage({ token }: { token: string }) {
-  const [message, setMessage] = useState('ログイン中…')
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void (async () => {
-      try {
-        const response = await fetch('/api/sessions', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-          signal: controller.signal,
-        })
-        setMessage(response.ok ? 'ログインしました。' : await getErrorMessage(response, 'ログインできませんでした。'))
-      } catch {
-        if (!controller.signal.aborted) setMessage('ログインできませんでした。')
-      }
-    })()
-    return () => controller.abort()
-  }, [token])
-
-  return <main><p>{message}</p></main>
-}
+const router = createBrowserRouter([
+  { path: '/', element: <LoginRoute /> },
+  { path: '/login', element: <LoginRoute /> },
+  { path: '/staff/entrance', loader: () => requireRole(['staff', 'admin']), element: <StaffPage />, errorElement: <RouteErrorPage /> },
+  { path: '/staff/point', loader: () => requireRole(['staff', 'admin']), element: <StaffPointsPage />, errorElement: <RouteErrorPage /> },
+  { path: '/admin', loader: () => requireRole(['admin']), element: <AdminPage />, errorElement: <RouteErrorPage /> },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
 
 export default function App() {
-  const token = useMemo(() => new URLSearchParams(window.location.search).get('token'), [])
-  return token ? <LoginPage token={token} /> : <StaffPage />
+  return <RouterProvider router={router} />
 }
