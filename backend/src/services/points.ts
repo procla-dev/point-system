@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { pointBalances, pointSettings, pointTransactions, users } from '../db/schema.js';
 
@@ -62,6 +62,64 @@ export async function grantUserPoints({ userId, operatorUserId, points }: GrantU
     if (!transaction) throw new Error('failed to record point transaction');
 
     return {
+      transactionId: transaction.id,
+      balance: updatedBalance.balance,
+    };
+  });
+}
+
+type SpendUserPointsInput = {
+  userId: string;
+  operatorUserId: string;
+  points: number;
+};
+
+export async function spendUserPoints({ userId, operatorUserId, points }: SpendUserPointsInput) {
+  return db.transaction(async (tx) => {
+    const [targetUser] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.id, userId), eq(users.role, 'user')))
+      .limit(1);
+
+    if (!targetUser) return { status: 'not_found' as const };
+
+    // 残高が不足している場合は更新されないため、残高がマイナスになることはない。
+    await tx.insert(pointBalances).values({ userId }).onConflictDoNothing({ target: pointBalances.userId });
+
+    const [updatedBalance] = await tx
+      .update(pointBalances)
+      .set({
+        balance: sql<number>`${pointBalances.balance} - ${points}`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(pointBalances.userId, userId), gte(pointBalances.balance, points)))
+      .returning({ balance: pointBalances.balance });
+
+    if (!updatedBalance) {
+      const [currentBalance] = await tx
+        .select({ balance: pointBalances.balance })
+        .from(pointBalances)
+        .where(eq(pointBalances.userId, userId))
+        .limit(1);
+
+      return { status: 'insufficient_balance' as const, balance: currentBalance?.balance ?? 0 };
+    }
+
+    const [transaction] = await tx
+      .insert(pointTransactions)
+      .values({
+        userId,
+        amount: points,
+        type: 'spend',
+        operatorUserId,
+      })
+      .returning({ id: pointTransactions.id });
+
+    if (!transaction) throw new Error('failed to record point transaction');
+
+    return {
+      status: 'ok' as const,
       transactionId: transaction.id,
       balance: updatedBalance.balance,
     };
