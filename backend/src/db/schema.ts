@@ -28,6 +28,7 @@ export const sessions = pgTable('sessions', {
   userId: uuid('user_id').notNull().references(() => users.id),
   tokenHash: text('token_hash').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
 /** ユーザーの現在のポイント残高 */

@@ -50,6 +50,13 @@
       "when": 1789607780709,
       "tag": "0006_add_booth_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789652672190,
+      "tag": "0007_cold_dakota_north",
+      "breakpoints": true
     }
   ]
 }
