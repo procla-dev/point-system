@@ -10,6 +10,7 @@ import { staff } from './routes/staff.js';
 import { admins } from './routes/admins.js';
 import { booths } from './routes/booths.js';
 import { sessions } from './routes/sessions.js';
+import { teams } from './routes/teams.js';
 import { adminSessions, adminPointSettings } from './routes/admins.js';
 import { rateLimit } from './middleware/rate-limit.js';
 
@@ -40,7 +41,8 @@ const routes = base
   .route('/users', users)
   .route('/staff', staff)
   .route('/admins', admins)
-  .route('/booths', booths);
+  .route('/booths', booths)
+  .route('/teams', teams);
 
 routes.route('/admin/sessions', adminSessions);
 routes.route('/admin/point-settings', adminPointSettings);

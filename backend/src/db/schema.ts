@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
 export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
@@ -70,12 +70,21 @@ export const pointTransactions = pgTable(
   (table) => [check('point_transactions_amount_positive', sql`${table.amount} > 0`)],
 );
 
+export const teams = pgTable('teams', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Team = typeof teams.$inferSelect;
+
 export const boothKind = pgEnum('booth_kind', ['entrance', 'exhibitor', 'exchanger']);
 
 export const booths = pgTable('booths', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   kind: boothKind('kind').notNull(),
+  teamId: uuid('team_id').references(() => teams.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -92,6 +101,16 @@ export const staff = pgTable('staff', {
   boothId: uuid('booth_id').references(() => booths.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const boothLikes = pgTable(
+  'booth_likes',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id),
+    boothId: uuid('booth_id').notNull().references(() => booths.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.boothId] })],
+);
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   loginTokens: many(loginTokens),
@@ -126,8 +145,19 @@ export const pointTransactionsRelations = relations(pointTransactions, ({ one })
   }),
 }));
 
-export const boothsRelations = relations(booths, ({ many }) => ({
+export const teamsRelations = relations(teams, ({ many }) => ({
+  booths: many(booths),
+}));
+
+export const boothsRelations = relations(booths, ({ many, one }) => ({
   staff: many(staff),
+  likes: many(boothLikes),
+  team: one(teams, { fields: [booths.teamId], references: [teams.id] }),
+}));
+
+export const boothLikesRelations = relations(boothLikes, ({ one }) => ({
+  user: one(users, { fields: [boothLikes.userId], references: [users.id] }),
+  booth: one(booths, { fields: [boothLikes.boothId], references: [booths.id] }),
 }));
 
 export const staffRelations = relations(staff, ({ one }) => ({
