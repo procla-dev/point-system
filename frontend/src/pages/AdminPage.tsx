@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import IssueAccountResult from '../components/IssueAccountResult';
 import IssuedAccountView from '../components/IssuedAccountView';
 import BoothManagement from '../components/BoothManagement';
+import PointSettings from '../components/PointSettings';
 import TeamManagement, { type Team } from '../components/TeamManagement';
 import StaffManagement, { type StaffAssignment } from '../components/StaffManagement';
 import StaffEditView from '../components/StaffEditView';
@@ -150,6 +151,8 @@ export default function AdminPage() {
           <IssueAccountResult state={state} />
           <hr className="border-t-2 border-gray-500" />
           <BoothManagement />
+          <hr className="mt-6 border-t-2 border-gray-500" />
+          <PointSettings />
         </>
       ) : (
         <>
