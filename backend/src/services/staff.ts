@@ -19,6 +19,7 @@ export async function findStaffAssignmentByUserId(userId: string) {
   if (!row) return undefined;
 
   return {
+    userId: row.userId,
     displayName: row.user.displayName,
     teamId: row.teamId,
     boothIds: row.staffBooths.map((staffBooth) => staffBooth.boothId),

@@ -31,12 +31,12 @@ const IdentityCodeField = z.string().min(1).openapi({ description: '対象スタ
 const LookupStaffRequest = z.object({ code: IdentityCodeField });
 
 const UpdateStaffAssignmentRequest = z.object({
-  code: IdentityCodeField,
   teamId: z.uuid().nullable().openapi({ description: '所属させるチームのID。nullの場合はチームから外す' }),
   boothIds: z.array(z.uuid()).openapi({ description: '担当させるブースのID。今の担当ブースはすべてこの内容で置き換える' }),
 });
 
 const StaffAssignmentResponse = z.object({
+  userId: z.uuid().openapi({ description: 'スタッフのユーザーID。識別コードは短時間で失効するため、更新時はこのIDで指定する' }),
   displayName: z.string().nullable().openapi({ description: 'スタッフの表示名。未設定なら null' }),
   teamId: z.uuid().nullable().openapi({ description: '所属チームのID。未所属なら null' }),
   boothIds: z.array(z.uuid()).openapi({ description: '担当ブースのID' }),
@@ -90,15 +90,18 @@ const lookupStaffRoute = createRoute({
 
 const updateStaffAssignmentRoute = createRoute({
   method: 'put',
-  path: '/assignment',
+  path: '/{userId}/assignment',
   operationId: 'updateStaffAssignment',
   tags: ['Staff'],
-  summary: '識別コードで指定したスタッフの所属チームと担当ブースを更新する',
+  summary: 'スタッフの所属チームと担当ブースを更新する',
   middleware: [requireRole('admin')] as const,
-  request: { body: { content: { 'application/json': { schema: UpdateStaffAssignmentRequest } } } },
+  request: {
+    params: z.object({ userId: z.uuid() }),
+    body: { content: { 'application/json': { schema: UpdateStaffAssignmentRequest } } },
+  },
   responses: {
     200: { description: '更新成功', content: { 'application/json': { schema: StaffAssignmentResponse } } },
-    401: { description: '未ログインまたは識別コードが無効', content: { 'application/json': { schema: ErrorResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'スタッフ・チーム・ブースのいずれかが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
@@ -132,11 +135,9 @@ staff.openapi(lookupStaffRoute, async (c) => {
 });
 
 staff.openapi(updateStaffAssignmentRoute, async (c) => {
-  const { code, teamId } = c.req.valid('json');
+  const { userId } = c.req.valid('param');
+  const { teamId } = c.req.valid('json');
   const boothIds = [...new Set(c.req.valid('json').boothIds)];
-
-  const userId = verifyIdentityCode(code);
-  if (!userId) throw new UnauthorizedError('invalid identity code');
 
   if (teamId) {
     const team = await findTeamById(teamId);
