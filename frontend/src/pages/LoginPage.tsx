@@ -5,6 +5,19 @@ import { getErrorMessage, type Role } from "../lib/shared";
 import Card from "../components/Card";
 import TurnstileWidget from "../components/TurnstileWidget";
 
+/** ログイン後の行き先。スタッフは付与できる展示ブースがあればポイント付与、なければアカウント発行の画面にする */
+async function homePathFor(role: Role) {
+  if (role === "admin") return "/admin";
+  if (role !== "staff") return "/";
+  try {
+    const response = await fetch("/api/staff/me/grantable-booths", { credentials: "include" });
+    if (response.ok && ((await response.json()) as unknown[]).length > 0) return "/staff/point";
+  } catch {
+    // 取得できない場合は受付の画面に送る
+  }
+  return "/staff/entrance";
+}
+
 export default function LoginPage({ token }: { token: string }) {
   const navigate = useNavigate();
   const [message, setMessage] = useState<
@@ -50,7 +63,7 @@ export default function LoginPage({ token }: { token: string }) {
         window.history.replaceState({}, '', window.location.pathname);
         setRole(session.role);
         if (session.displayName) {
-          navigate(session.role === "admin" ? "/admin" : session.role === "staff" ? "/staff/entrance" : "/", { replace: true });
+          navigate(await homePathFor(session.role), { replace: true });
         }
         setMessage(session.displayName ? "complete" : "name");
       } catch {
@@ -77,7 +90,7 @@ export default function LoginPage({ token }: { token: string }) {
       );
       return;
     }
-    navigate(role === "admin" ? "/admin" : role === "staff" ? "/staff/entrance" : "/", { replace: true });
+    navigate(role ? await homePathFor(role) : "/", { replace: true });
     setMessage("complete");
   }
   if (message === "logging-in")

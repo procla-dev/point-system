@@ -9,6 +9,7 @@ import {
   createStaff,
   findAllStaffAssignments,
   findStaffAssignmentByUserId,
+  findGrantableBoothsByUserId,
   findStaffBoothsByUserId,
   setStaffAssignment,
 } from '../services/staff.js';
@@ -40,6 +41,8 @@ const StaffAssignmentResponse = z.object({
 
 const MyStaffBoothsResponse = z.array(createSelectSchema(boothsTable).pick({ name: true }));
 
+const GrantableBoothsResponse = z.array(createSelectSchema(boothsTable).pick({ id: true, name: true }));
+
 const createStaffRoute = createRoute({
   method: 'post',
   path: '/',
@@ -63,6 +66,21 @@ const getMyStaffBoothsRoute = createRoute({
   middleware: [requireRole('staff')] as const,
   responses: {
     200: { description: '取得成功', content: { 'application/json': { schema: MyStaffBoothsResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const getMyGrantableBoothsRoute = createRoute({
+  method: 'get',
+  path: '/me/grantable-booths',
+  operationId: 'getMyGrantableBooths',
+  tags: ['Staff'],
+  summary: 'ポイントを付与できる展示ブースを取得する',
+  description: '同じチームのスタッフが担当している展示ブース(自分の担当分を含む)。チーム未所属なら自分の担当分だけ',
+  middleware: [requireRole('staff')] as const,
+  responses: {
+    200: { description: '取得成功', content: { 'application/json': { schema: GrantableBoothsResponse } } },
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
@@ -114,6 +132,11 @@ staff.openapi(createStaffRoute, async (c) => {
 staff.openapi(getMyStaffBoothsRoute, async (c) => {
   const assignedBooths = await findStaffBoothsByUserId(c.get('user').id);
   return c.json(assignedBooths.map((booth) => ({ name: booth.name })), 200);
+});
+
+staff.openapi(getMyGrantableBoothsRoute, async (c) => {
+  const grantableBooths = await findGrantableBoothsByUserId(c.get('user').id);
+  return c.json(grantableBooths, 200);
 });
 
 staff.openapi(getStaffListRoute, async (c) => {

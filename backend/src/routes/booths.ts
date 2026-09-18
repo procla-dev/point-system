@@ -5,6 +5,7 @@ import { BadRequestError, ConflictError, ErrorResponse, NotFoundError } from '..
 import { requireRole } from '../middleware/auth.js';
 import { findAllBooths, findBoothById, createBooth, updateBooth, deleteBooth } from '../services/booths.js';
 import { findLikeByBoothId, likeBooth } from '../services/likes.js';
+import { findGrantByBoothId } from '../services/points.js';
 import { findStaffBoothByBoothId } from '../services/staff.js';
 import { recordOperationLog } from '../services/operation-logs.js';
 
@@ -112,7 +113,7 @@ const deleteBoothRoute = createRoute({
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
-    409: { description: 'このブースに紐付いているスタッフまたはいいねがある', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'このブースに紐付いているスタッフ・いいね・ポイント付与の履歴がある', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -200,6 +201,9 @@ booths.openapi(deleteBoothRoute, async (c) => {
 
   const like = await findLikeByBoothId(id);
   if (like) throw new ConflictError('this booth has likes');
+
+  const grant = await findGrantByBoothId(id);
+  if (grant) throw new ConflictError('this booth has point grants');
 
   await deleteBooth(id);
   return c.body(null, 204);

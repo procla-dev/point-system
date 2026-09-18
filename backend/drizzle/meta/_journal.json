@@ -113,6 +113,13 @@
       "when": 1789749870580,
       "tag": "0015_drop_booth_team_and_staff_booth",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789759900764,
+      "tag": "0016_point_transactions_booth",
+      "breakpoints": true
     }
   ]
 }

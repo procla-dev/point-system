@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { staff as staffTable, staffBooths, users } from '../db/schema.js';
+import { booths, staff as staffTable, staffBooths, users } from '../db/schema.js';
 
 export async function createStaff() {
   return db.transaction(async (tx) => {
@@ -69,4 +69,23 @@ export async function findStaffBoothByBoothId(boothId: string) {
 
 export async function findStaffByTeamId(teamId: string) {
   return db.query.staff.findFirst({ where: eq(staffTable.teamId, teamId) });
+}
+
+/**
+ * スタッフがポイントを付与できる展示ブースを返す。
+ * 同じチームのスタッフが担当している展示ブース(自分の担当分を含む)。チーム未所属なら自分の担当分だけ
+ */
+export async function findGrantableBoothsByUserId(userId: string) {
+  const self = await db.query.staff.findFirst({ where: eq(staffTable.userId, userId), columns: { teamId: true } });
+  if (!self) return [];
+
+  const memberCondition = self.teamId ? eq(staffTable.teamId, self.teamId) : eq(staffTable.userId, userId);
+
+  return db
+    .selectDistinct({ id: booths.id, name: booths.name })
+    .from(staffBooths)
+    .innerJoin(staffTable, eq(staffTable.userId, staffBooths.userId))
+    .innerJoin(booths, eq(booths.id, staffBooths.boothId))
+    .where(and(memberCondition, eq(booths.kind, 'exhibitor')))
+    .orderBy(booths.name);
 }

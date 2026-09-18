@@ -5,6 +5,7 @@ import { pointBalances, pointSettings, pointTransactions, users } from '../db/sc
 type GrantUserPointsInput = {
   userId: string;
   operatorUserId: string;
+  boothId: string;
   points: number;
 };
 
@@ -25,7 +26,7 @@ export async function updateGrantPoints(grantPoints: number) {
   return settings!.grantPoints;
 }
 
-export async function grantUserPoints({ userId, operatorUserId, points }: GrantUserPointsInput) {
+export async function grantUserPoints({ userId, operatorUserId, boothId, points }: GrantUserPointsInput) {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({ id: users.id })
@@ -33,7 +34,22 @@ export async function grantUserPoints({ userId, operatorUserId, points }: GrantU
       .where(and(eq(users.id, userId), eq(users.role, 'user')))
       .limit(1);
 
-    if (!targetUser) return undefined;
+    if (!targetUser) return { status: 'not_found' as const };
+
+    // 同じブースで付与済みなら、一意制約に弾かれて行が返らない。残高を変える前に確かめる
+    const [transaction] = await tx
+      .insert(pointTransactions)
+      .values({
+        userId,
+        amount: points,
+        type: 'grant',
+        operatorUserId,
+        boothId,
+      })
+      .onConflictDoNothing()
+      .returning({ id: pointTransactions.id });
+
+    if (!transaction) return { status: 'already_granted' as const };
 
     // 既存ユーザーはマイグレーションで初期化するが、欠落時にも付与処理を継続できるようにする。
     await tx.insert(pointBalances).values({ userId }).onConflictDoNothing({ target: pointBalances.userId });
@@ -49,23 +65,22 @@ export async function grantUserPoints({ userId, operatorUserId, points }: GrantU
 
     if (!updatedBalance) throw new Error('failed to update point balance');
 
-    const [transaction] = await tx
-      .insert(pointTransactions)
-      .values({
-        userId,
-        amount: points,
-        type: 'grant',
-        operatorUserId,
-      })
-      .returning({ id: pointTransactions.id });
-
-    if (!transaction) throw new Error('failed to record point transaction');
-
     return {
+      status: 'granted' as const,
       transactionId: transaction.id,
       balance: updatedBalance.balance,
     };
   });
+}
+
+/** ブースで付与した履歴があるか(ブースを削除できるかの判定に使う) */
+export async function findGrantByBoothId(boothId: string) {
+  const [grant] = await db
+    .select({ id: pointTransactions.id })
+    .from(pointTransactions)
+    .where(eq(pointTransactions.boothId, boothId))
+    .limit(1);
+  return grant;
 }
 
 type SpendUserPointsInput = {

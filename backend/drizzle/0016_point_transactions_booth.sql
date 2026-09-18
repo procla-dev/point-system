@@ -1,0 +1,3 @@
+ALTER TABLE "point_transactions" ADD COLUMN "booth_id" uuid;--> statement-breakpoint
+ALTER TABLE "point_transactions" ADD CONSTRAINT "point_transactions_booth_id_booths_id_fk" FOREIGN KEY ("booth_id") REFERENCES "public"."booths"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "point_transactions_grant_user_booth_unique" ON "point_transactions" USING btree ("user_id","booth_id") WHERE "point_transactions"."type" = 'grant';

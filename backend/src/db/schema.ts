@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
 export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
@@ -64,10 +64,18 @@ export const pointTransactions = pgTable(
     amount: integer('amount').notNull(),
     type: pointTransactionType('type').notNull(),
     operatorUserId: uuid('operator_user_id').notNull().references(() => users.id),
+    /** 付与したブース。消費や、ブースを記録する前の付与は null */
+    boothId: uuid('booth_id').references(() => booths.id),
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [check('point_transactions_amount_positive', sql`${table.amount} > 0`)],
+  (table) => [
+    check('point_transactions_amount_positive', sql`${table.amount} > 0`),
+    // 同じ来場者は1つのブースで1回までしか付与を受けられない
+    uniqueIndex('point_transactions_grant_user_booth_unique')
+      .on(table.userId, table.boothId)
+      .where(sql`${table.type} = 'grant'`),
+  ],
 );
 
 export const teams = pgTable('teams', {
