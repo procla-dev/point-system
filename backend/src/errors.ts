@@ -6,6 +6,12 @@ export const ErrorResponse = z.object({
   message: z.string(),
 });
 
+export class BadRequestError extends HTTPException {
+  constructor(message: string) {
+    super(400, { message });
+  }
+}
+
 export class UnauthorizedError extends HTTPException {
   constructor(message: string) {
     super(401, { message });
