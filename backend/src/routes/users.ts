@@ -61,12 +61,12 @@ const reissueUserLoginTokenRoute = createRoute({
   operationId: 'reissueUserLoginToken',
   tags: ['Users'],
   summary: '未使用トークンからユーザーのトークンを再発行する',
-  middleware: [requireRole('staff', 'admin')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('entrance')] as const,
   request: { body: { content: { 'application/json': { schema: z.object({ token: z.string().min(1) }) } } } },
   responses: {
     201: { description: '再発行成功', content: { 'application/json': { schema: LoginTokenResponse } } },
     401: { description: 'トークンが無効または使用済み', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない、または受付ブース担当ではない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
