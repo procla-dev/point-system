@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getErrorMessage } from '../lib/shared'
+import Select from './Select'
+import Table from './Table'
 
 type BoothKind = 'entrance' | 'exhibitor' | 'exchanger'
 
@@ -132,54 +134,109 @@ export default function BoothManagement() {
   }
 
   return (
-    <section className="booth-management">
-      <h2>ブース管理</h2>
-      <form onSubmit={(event) => void createBooth(event)}>
-        <label>
+    <section className="booth-management mt-6">
+      <h2 className="text-lg font-bold">ブース管理</h2>
+      <form onSubmit={(event) => void createBooth(event)} className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
           ブース名
-          <input value={name} onChange={(event) => setName(event.target.value)} required />
-        </label>{' '}
-        <label>
-          種類
-          <select value={kind} onChange={(event) => setKind(event.target.value as BoothKind)}>
-            {Object.entries(boothKindLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>{' '}
-        <button type="submit" disabled={submitting}>作成</button>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            placeholder="ブース名を入力"
+            className="h-9 min-w-0 border-b border-gray-500 bg-transparent p-1 focus:outline-none"
+          />
+        </label>
+        <div className="flex shrink-0 items-end gap-1">
+          <label className="flex flex-col gap-1">
+            種類
+            <Select
+              wrapperClassName="h-9 w-24"
+              value={kind}
+              onChange={(event) => setKind(event.target.value as BoothKind)}
+            >
+              {Object.entries(boothKindLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+          </label>
+          <button type="submit" disabled={submitting} className="h-9 w-10 shrink-0 p-0! underline">
+            作成
+          </button>
+        </div>
       </form>
 
-      {loading && <p>ブースを読み込み中…</p>}
-      {!loading && booths.length === 0 && <p>ブースはありません。</p>}
-      {!loading && booths.length > 0 && (
-        <ul>
-          {booths.map((booth) => (
-            <li key={booth.id}>
-              {editingId === booth.id ? (
-                <form onSubmit={(event) => void updateBooth(event, booth.id)}>
-                  <input value={editingName} onChange={(event) => setEditingName(event.target.value)} required />{' '}
-                  <select value={editingKind} onChange={(event) => setEditingKind(event.target.value as BoothKind)}>
+      {loading && <p className="mt-4">ブースを読み込み中…</p>}
+      {!loading && (
+        <Table
+          rows={booths}
+          rowKey={(booth) => booth.id}
+          pageSize={4}
+          onPageChange={cancelEditing}
+          emptyMessage="ブースはありません。"
+          columns={[
+            {
+              key: 'name',
+              header: 'ブース名',
+              render: (booth) =>
+                editingId === booth.id ? (
+                  <input
+                    value={editingName}
+                    onChange={(event) => setEditingName(event.target.value)}
+                    required
+                    className="h-9 w-full border-b border-gray-500 bg-transparent p-1 focus:outline-none"
+                  />
+                ) : (
+                  <div className="flex h-9 items-center">{booth.name}</div>
+                ),
+            },
+            {
+              key: 'kind',
+              header: '種類',
+              width: '6rem',
+              render: (booth) =>
+                editingId === booth.id ? (
+                  <Select
+                    wrapperClassName="h-9 w-full"
+                    value={editingKind}
+                    onChange={(event) => setEditingKind(event.target.value as BoothKind)}
+                  >
                     {Object.entries(boothKindLabels).map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
-                  </select>{' '}
-                  <button type="submit" disabled={submitting}>保存</button>{' '}
-                  <button type="button" onClick={cancelEditing} disabled={submitting}>キャンセル</button>
-                </form>
-              ) : (
-                <>
-                  <span>{booth.name}（{boothKindLabels[booth.kind]}）</span>{' '}
-                  <button type="button" onClick={() => startEditing(booth)} disabled={submitting}>編集</button>{' '}
-                  <button type="button" onClick={() => void deleteBooth(booth.id)} disabled={submitting}>削除</button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+                  </Select>
+                ) : (
+                  <div className="flex h-9 items-center">{boothKindLabels[booth.kind]}</div>
+                ),
+            },
+            {
+              key: 'actions',
+              header: '操作',
+              width: '8.5rem',
+              render: (booth) =>
+                editingId === booth.id ? (
+                  <form onSubmit={(event) => void updateBooth(event, booth.id)} className="flex h-9 flex-nowrap items-center gap-2">
+                    <button type="submit" disabled={submitting} className="shrink-0 p-0! underline">保存</button>
+                    <button type="button" onClick={cancelEditing} disabled={submitting} className="shrink-0 p-0! underline">
+                      キャンセル
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex h-9 flex-nowrap items-center gap-2">
+                    <button type="button" onClick={() => startEditing(booth)} disabled={submitting} className="shrink-0 p-0! underline">
+                      編集
+                    </button>
+                    <button type="button" onClick={() => void deleteBooth(booth.id)} disabled={submitting} className="shrink-0 p-0! underline">
+                      削除
+                    </button>
+                  </div>
+                ),
+            },
+          ]}
+        />
       )}
-      {message && <p>{message}</p>}
-      {error && <p role="alert">{error}</p>}
+      {message && <p className="mt-2">{message}</p>}
+      {error && <p role="alert" className="mt-2">{error}</p>}
     </section>
   )
 }
