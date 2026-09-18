@@ -35,6 +35,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?VITE_TURNSTILE_SITE_KEY must be set}
     restart: unless-stopped
     ports:
       - '127.0.0.1:8080:80'

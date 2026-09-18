@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminPage from "./AdminPage";
 import { getErrorMessage, type Role } from "../lib/shared";
 import Card from "../components/Card";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 export default function LoginPage({ token }: { token: string }) {
   const navigate = useNavigate();
@@ -12,7 +13,19 @@ export default function LoginPage({ token }: { token: string }) {
   const [role, setRole] = useState<Role | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const handleTurnstileToken = useCallback((value: string | null) => {
+    setTurnstileToken(value);
+  }, []);
+  const handleTurnstileError = useCallback((value: string) => {
+    setError(value);
+    setMessage("error");
+  }, []);
+
   useEffect(() => {
+    if (!turnstileToken) return;
+
     const controller = new AbortController();
     void (async () => {
       try {
@@ -20,7 +33,7 @@ export default function LoginPage({ token }: { token: string }) {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, turnstileToken }),
           signal: controller.signal,
         });
         if (!response.ok) {
@@ -48,7 +61,7 @@ export default function LoginPage({ token }: { token: string }) {
       }
     })();
     return () => controller.abort();
-  }, [navigate, token]);
+  }, [navigate, token, turnstileToken]);
   async function submitName(event: FormEvent) {
     event.preventDefault();
     if (!displayName.trim()) return;
@@ -71,6 +84,10 @@ export default function LoginPage({ token }: { token: string }) {
     return (
       <main className="login-status">
         <p>ログイン中…</p>
+        <TurnstileWidget
+          onToken={handleTurnstileToken}
+          onError={handleTurnstileError}
+        />
       </main>
     );
   if (message === "error")
