@@ -4,11 +4,13 @@ import { setCookie } from 'hono/cookie';
 import { users } from '../db/schema.js';
 import { ErrorResponse, UnauthorizedError } from '../errors.js';
 import { consumeLoginToken, createSession, SESSION_COOKIE_NAME } from '../services/auth.js';
+import { verifyTurnstileToken } from '../services/turnstile.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
 const CreateSessionRequest = z.object({
   token: z.string().openapi({ description: 'ログイン用QRコードから読み取ったトークン' }),
+  turnstileToken: z.string().openapi({ description: 'Turnstileのトークン' }),
 });
 
 const SessionResponse = createSelectSchema(users).pick({ role: true, displayName: true });
@@ -31,7 +33,11 @@ const createSessionRoute = createRoute({
 export const sessions = new OpenAPIHono();
 
 sessions.openapi(createSessionRoute, async (c) => {
-  const { token } = c.req.valid('json');
+  const { token, turnstileToken } = c.req.valid('json');
+
+  const ip = c.req.header('CF-Connecting-IP');
+  const turnstileOk = await verifyTurnstileToken(turnstileToken, ip);
+  if (!turnstileOk) throw new UnauthorizedError('turnstile verification failed');
 
   const user = await consumeLoginToken(token);
   if (!user) throw new UnauthorizedError('invalid or expired token');

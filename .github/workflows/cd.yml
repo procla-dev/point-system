@@ -29,11 +29,13 @@ jobs:
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           PROD_IDENTITY_CODE_SECRET: ${{ secrets.PROD_IDENTITY_CODE_SECRET }}
+          PROD_TURNSTILE_SECRET: ${{ secrets.PROD_TURNSTILE_SECRET }}
         run: |
           set -eu
           : "${PROD_POSTGRES_PASSWORD:?PROD_POSTGRES_PASSWORD is required}"
           : "${PROD_DATABASE_URL:?PROD_DATABASE_URL is required}"
           : "${PROD_IDENTITY_CODE_SECRET:?PROD_IDENTITY_CODE_SECRET is required}"
+          : "${PROD_TURNSTILE_SECRET:?PROD_TURNSTILE_SECRET is required}"
 
           env_file="$RUNNER_TEMP/point-system.production.env"
           umask 077
@@ -41,6 +43,7 @@ jobs:
             printf 'POSTGRES_PASSWORD=%s\n' "$PROD_POSTGRES_PASSWORD"
             printf 'DATABASE_URL=%s\n' "$PROD_DATABASE_URL"
             printf 'IDENTITY_CODE_SECRET=%s\n' "$PROD_IDENTITY_CODE_SECRET"
+            printf 'TURNSTILE_SECRET=%s\n' "$PROD_TURNSTILE_SECRET"
           } > "$env_file"
           echo "COMPOSE_ENV_FILE=$env_file" >> "$GITHUB_ENV"
 
