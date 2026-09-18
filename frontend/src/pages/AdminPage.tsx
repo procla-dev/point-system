@@ -10,6 +10,12 @@ import TeamManagement, { type Team } from '../components/TeamManagement';
 import StaffManagement, { type StaffAssignment } from '../components/StaffManagement';
 import StaffEditView from '../components/StaffEditView';
 
+const issueTargetLabels: Record<string, string> = {
+  '/api/users': 'ユーザー',
+  '/api/staff': 'スタッフ',
+  '/api/admins': '管理者',
+};
+
 export default function AdminPage() {
   const [state, setState] = useState<IssueState>({ kind: 'idle' });
   const [issuedPath, setIssuedPath] = useState('');
@@ -109,6 +115,7 @@ export default function AdminPage() {
   if (state.kind === 'ready') {
     return (
       <IssuedAccountView
+        target={issueTargetLabels[issuedPath] ?? ''}
         qrCode={state.qrCode}
         loginUrl={state.loginUrl}
         busy={busy}

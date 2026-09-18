@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, redirect, RouterProvider, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, Navigate, redirect, RouterProvider, useSearchParams, type LoaderFunctionArgs } from 'react-router-dom'
 import AdminPage from './pages/AdminPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -27,9 +27,23 @@ async function requireRole(roles: Role[]) {
   return null
 }
 
+/** 管理者がホームを開いたら管理者ページに移す。ログイン用トークン付きのときはログイン処理を優先する */
+async function redirectAdminToAdminPage({ request }: LoaderFunctionArgs) {
+  if (new URL(request.url).searchParams.has('token')) return null
+  try {
+    const response = await fetch('/api/users/me', { credentials: 'include' })
+    if (!response.ok) return null
+    const user = (await response.json()) as { role: Role }
+    if (user.role === 'admin') return redirect('/admin')
+  } catch {
+    // 取得できない場合はホーム画面側でエラーを表示する
+  }
+  return null
+}
+
 const router = createBrowserRouter([
-  { path: '/', element: <LoginRoute /> },
-  { path: '/login', element: <LoginRoute /> },
+  { path: '/', loader: redirectAdminToAdminPage, element: <LoginRoute /> },
+  { path: '/login', loader: redirectAdminToAdminPage, element: <LoginRoute /> },
   { path: '/staff/entrance', loader: () => requireRole(['staff', 'admin']), element: <StaffPage />, errorElement: <RouteErrorPage /> },
   { path: '/staff/point', loader: () => requireRole(['staff', 'admin']), element: <StaffPointsPage />, errorElement: <RouteErrorPage /> },
   { path: '/admin', loader: () => requireRole(['admin']), element: <AdminPage />, errorElement: <RouteErrorPage /> },

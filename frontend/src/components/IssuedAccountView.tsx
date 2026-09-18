@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 type Props = {
+  target: string
   qrCode: string
   loginUrl: string
   busy: boolean
@@ -9,7 +10,7 @@ type Props = {
   onReissue?: () => void
 }
 
-export default function IssuedAccountView({ qrCode, loginUrl, busy, onBack, onIssueNew, onReissue }: Props) {
+export default function IssuedAccountView({ target, qrCode, loginUrl, busy, onBack, onIssueNew, onReissue }: Props) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -33,7 +34,8 @@ export default function IssuedAccountView({ qrCode, loginUrl, busy, onBack, onIs
         ← 戻る
       </button>
       <div className="mx-auto w-fit">
-        <div className="flex justify-end gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="mr-auto text-xl font-bold">{target}アカウント</h2>
           <button
             type="button"
             onClick={onIssueNew}
