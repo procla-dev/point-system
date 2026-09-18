@@ -16,13 +16,13 @@ export async function findBoothByTeamId(teamId: string) {
   return db.query.booths.findFirst({ where: eq(booths.teamId, teamId) });
 }
 
-export async function createBooth(name: string, kind: BoothKind) {
-  const [newBooth] = await db.insert(booths).values({ name, kind }).returning();
+export async function createBooth(name: string, kind: BoothKind, teamId: string | null) {
+  const [newBooth] = await db.insert(booths).values({ name, kind, teamId }).returning();
   return newBooth!;
 }
 
-export async function updateBooth(id: string, name: string, kind: BoothKind) {
-  const [updatedBooth] = await db.update(booths).set({ name, kind }).where(eq(booths.id, id)).returning();
+export async function updateBooth(id: string, name: string, kind: BoothKind, teamId: string | null) {
+  const [updatedBooth] = await db.update(booths).set({ name, kind, teamId }).where(eq(booths.id, id)).returning();
   return updatedBooth!;
 }
 
