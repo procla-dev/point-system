@@ -24,6 +24,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://point.procla.dev}
       IDENTITY_CODE_SECRET: ${IDENTITY_CODE_SECRET:?IDENTITY_CODE_SECRET must be set}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:?TURNSTILE_SECRET must be set}
     ports:
       - '127.0.0.1:8787:8787'
     depends_on:
@@ -34,6 +35,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?VITE_TURNSTILE_SITE_KEY must be set}
     restart: unless-stopped
     ports:
       - '127.0.0.1:8080:80'

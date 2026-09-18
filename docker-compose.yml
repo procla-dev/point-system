@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-point}:${POSTGRES_PASSWORD:-point}@db:5432/${POSTGRES_DB:-point_system}
       CORS_ORIGIN: http://localhost:5173
       IDENTITY_CODE_SECRET: ${IDENTITY_CODE_SECRET}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET}
     ports:
       - '${BACKEND_PORT:-8787}:8787'
     volumes:
@@ -46,6 +47,7 @@ services:
     restart: unless-stopped
     environment:
       VITE_API_PROXY_TARGET: http://backend:8787
+      VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY}
     ports:
       - '${FRONTEND_PORT:-5173}:5173'
     volumes:
