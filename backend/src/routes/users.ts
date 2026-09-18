@@ -150,7 +150,7 @@ const spendUserPointsRoute = createRoute({
   operationId: 'spendUserPoints',
   tags: ['Users'],
   summary: 'ユーザーのポイントを差し引く',
-  middleware: [requireRole('staff'), requireBoothKind('exchanger')] as const,
+  middleware: [requireRole('staff', 'admin'), requireBoothKind('exchanger')] as const,
   request: {
     body: {
       content: {
@@ -173,7 +173,7 @@ const spendUserPointsRoute = createRoute({
       content: { 'application/json': { schema: ErrorResponse } },
     },
     403: {
-      description: '交換所スタッフではない',
+      description: 'スタッフまたは管理者ではない、または交換所スタッフではない',
       content: { 'application/json': { schema: ErrorResponse } },
     },
     404: {

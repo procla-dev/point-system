@@ -20,6 +20,9 @@ export async function getErrorMessage(response: Response, fallback: string) {
     if (body.message === 'not allowed for this role') return 'この操作を行う権限がありません。'
     if (body.message === 'already liked this booth') return 'このブースにはすでにいいねしています。'
     if (body.message === 'this booth cannot be liked') return 'このブースにはいいねできません。'
+    if (body.message === 'invalid identity code') return 'ユーザー識別コードが無効です。'
+    if (body.message === 'insufficient point balance') return 'ポイント残高が不足しています。'
+    if (body.message === 'not allowed for this booth') return 'このブースではこの操作を行えません。'
     return body.message ?? fallback
   } catch {
     return fallback

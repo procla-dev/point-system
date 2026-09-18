@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import StaffPage from './pages/StaffPage'
 import StaffEntranceDisplayPage from './pages/StaffEntranceDisplayPage'
 import StaffPointsPage from './pages/StaffPointsPage'
+import StaffExchangePage from './pages/StaffExchangePage'
 import BoothLikePage from './pages/BoothLikePage'
 import RouteErrorPage from './components/RouteErrorPage'
 
@@ -49,6 +50,7 @@ const router = createBrowserRouter([
   { path: '/staff/entrance', loader: () => requireRole(['staff', 'admin']), element: <StaffPage />, errorElement: <RouteErrorPage /> },
   { path: '/staff/entrance/display', loader: () => requireRole(['staff', 'admin']), element: <StaffEntranceDisplayPage />, errorElement: <RouteErrorPage /> },
   { path: '/staff/point', loader: () => requireRole(['staff', 'admin']), element: <StaffPointsPage />, errorElement: <RouteErrorPage /> },
+  { path: '/staff/exchange', loader: () => requireRole(['staff', 'admin']), element: <StaffExchangePage />, errorElement: <RouteErrorPage /> },
   { path: '/admin', loader: () => requireRole(['admin']), element: <AdminPage />, errorElement: <RouteErrorPage /> },
   { path: '/booths/:boothId/like', loader: () => requireRole(['user']), element: <BoothLikePage />, errorElement: <RouteErrorPage /> },
   { path: '*', element: <Navigate to="/" replace /> },
