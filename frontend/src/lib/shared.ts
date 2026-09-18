@@ -1,8 +1,16 @@
 export type Role = 'user' | 'staff' | 'admin'
 
+export const ENTRANCE_DISPLAY_CHANNEL = 'point-system-entrance-display'
+
+export type EntranceDisplayMessage =
+  | { type: 'display-ready' }
+  | { type: 'display-clear' }
+  | { type: 'qr-issued'; qrCode: string; loginUrl: string; expiresAt?: string }
+
 export type IssueState =
-  | { kind: 'idle' | 'loading' }
-  | { kind: 'ready'; qrCode: string; loginUrl: string; token: string }
+  | { kind: 'idle' }
+  | { kind: 'loading'; previous?: { qrCode: string; loginUrl: string; token: string; expiresAt?: string } }
+  | { kind: 'ready'; qrCode: string; loginUrl: string; token: string; expiresAt?: string }
   | { kind: 'error'; message: string }
 
 export async function getErrorMessage(response: Response, fallback: string) {
