@@ -12,6 +12,10 @@ export async function findBoothById(id: string) {
   return db.query.booths.findFirst({ where: eq(booths.id, id) });
 }
 
+export async function findBoothByTeamId(teamId: string) {
+  return db.query.booths.findFirst({ where: eq(booths.teamId, teamId) });
+}
+
 export async function createBooth(name: string, kind: BoothKind) {
   const [newBooth] = await db.insert(booths).values({ name, kind }).returning();
   return newBooth!;
