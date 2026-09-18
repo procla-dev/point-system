@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { booths } from '../db/schema.js';
 
@@ -12,17 +12,18 @@ export async function findBoothById(id: string) {
   return db.query.booths.findFirst({ where: eq(booths.id, id) });
 }
 
-export async function findBoothByTeamId(teamId: string) {
-  return db.query.booths.findFirst({ where: eq(booths.teamId, teamId) });
+export async function findBoothsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.query.booths.findMany({ where: inArray(booths.id, ids) });
 }
 
-export async function createBooth(name: string, kind: BoothKind, teamId: string | null) {
-  const [newBooth] = await db.insert(booths).values({ name, kind, teamId }).returning();
+export async function createBooth(name: string, kind: BoothKind) {
+  const [newBooth] = await db.insert(booths).values({ name, kind }).returning();
   return newBooth!;
 }
 
-export async function updateBooth(id: string, name: string, kind: BoothKind, teamId: string | null) {
-  const [updatedBooth] = await db.update(booths).set({ name, kind, teamId }).where(eq(booths.id, id)).returning();
+export async function updateBooth(id: string, name: string, kind: BoothKind) {
+  const [updatedBooth] = await db.update(booths).set({ name, kind }).where(eq(booths.id, id)).returning();
   return updatedBooth!;
 }
 

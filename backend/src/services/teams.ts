@@ -1,16 +1,22 @@
 import { count, desc, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { boothLikes, booths, teams } from '../db/schema.js';
+import { boothLikes, staff, staffBooths, teams } from '../db/schema.js';
 
-/** チーム一覧を、所属ブースに付いたいいねの合計が多い順に返す */
+/** チーム一覧を、所属スタッフの担当ブースに付いたいいねの合計が多い順に返す */
 export async function findAllTeamsWithLikeCount() {
   const likeCount = count(boothLikes.userId);
+  // 同じチームの複数人が同じブースを担当していても二重に数えないよう、(チーム, ブース) の組を先に重複排除する
+  const teamBooths = db
+    .selectDistinct({ teamId: staff.teamId, boothId: staffBooths.boothId })
+    .from(staff)
+    .innerJoin(staffBooths, eq(staffBooths.userId, staff.userId))
+    .as('team_booths');
 
   return db
     .select({ id: teams.id, name: teams.name, likeCount })
     .from(teams)
-    .leftJoin(booths, eq(booths.teamId, teams.id))
-    .leftJoin(boothLikes, eq(boothLikes.boothId, booths.id))
+    .leftJoin(teamBooths, eq(teamBooths.teamId, teams.id))
+    .leftJoin(boothLikes, eq(boothLikes.boothId, teamBooths.boothId))
     .groupBy(teams.id)
     .orderBy(desc(likeCount), teams.name);
 }
