@@ -1,14 +1,13 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users } from '../db/schema.js';
-import { ErrorResponse, NotFoundError, UnauthorizedError } from '../errors.js';
+import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createAdmin } from '../services/admins.js';
 import { createLoginToken, revokeSessionsForUser } from '../services/auth.js';
 import { recordOperationLog } from '../services/operation-logs.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { verifyIdentityCode } from '../services/identity.js';
 import { getGrantPoints, updateGrantPoints } from '../services/points.js';
 
 const { createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -57,16 +56,22 @@ const revokeSessionsRoute = createRoute({
   path: '/revoke',
   operationId: 'revokeAdminSessions',
   tags: ['Admins'],
-  summary: '識別コードでstaff/adminのセッションを強制失効する',
+  summary: 'staff/adminのセッションを強制失効する',
   middleware: [requireRole('admin')] as const,
-  request: { body: { content: { 'application/json': { schema: z.object({ code: z.string().min(1) }) } } } },
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: z.object({ userId: z.uuid().openapi({ description: '失効させるstaff/adminのユーザーID' }) }) },
+      },
+    },
+  },
   responses: {
     200: {
       description: '失効成功',
       content: { 'application/json': { schema: z.object({ revokedCount: z.number().int().nonnegative() }) } },
     },
     401: {
-      description: '未ログインまたは識別コードが無効',
+      description: '未ログイン',
       content: { 'application/json': { schema: ErrorResponse } },
     },
     403: {
@@ -82,8 +87,7 @@ const revokeSessionsRoute = createRoute({
 
 export const adminSessions = new OpenAPIHono();
 adminSessions.openapi(revokeSessionsRoute, async (c) => {
-  const userId = verifyIdentityCode(c.req.valid('json').code);
-  if (!userId) throw new UnauthorizedError('invalid identity code');
+  const { userId } = c.req.valid('json');
   const target = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { role: true } });
   if (!target || (target.role !== 'staff' && target.role !== 'admin')) throw new NotFoundError('staff or admin not found');
   const revokedCount = await revokeSessionsForUser(userId);

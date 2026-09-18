@@ -84,7 +84,6 @@ export const booths = pgTable('booths', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   kind: boothKind('kind').notNull(),
-  teamId: uuid('team_id').references(() => teams.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -98,9 +97,21 @@ export type Booth = typeof booths.$inferSelect;
 
 export const staff = pgTable('staff', {
   userId: uuid('user_id').primaryKey().references(() => users.id),
-  boothId: uuid('booth_id').references(() => booths.id),
+  /** スタッフは常に1つのチームにだけ所属する。未所属は null */
+  teamId: uuid('team_id').references(() => teams.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** スタッフの担当ブース。1人が複数ブースを担当でき、1つのブースを複数人で担当することもある */
+export const staffBooths = pgTable(
+  'staff_booths',
+  {
+    userId: uuid('user_id').notNull().references(() => staff.userId),
+    boothId: uuid('booth_id').notNull().references(() => booths.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.boothId] })],
+);
 
 export const boothLikes = pgTable(
   'booth_likes',
@@ -146,13 +157,12 @@ export const pointTransactionsRelations = relations(pointTransactions, ({ one })
 }));
 
 export const teamsRelations = relations(teams, ({ many }) => ({
-  booths: many(booths),
+  staff: many(staff),
 }));
 
-export const boothsRelations = relations(booths, ({ many, one }) => ({
-  staff: many(staff),
+export const boothsRelations = relations(booths, ({ many }) => ({
+  staffBooths: many(staffBooths),
   likes: many(boothLikes),
-  team: one(teams, { fields: [booths.teamId], references: [teams.id] }),
 }));
 
 export const boothLikesRelations = relations(boothLikes, ({ one }) => ({
@@ -160,7 +170,13 @@ export const boothLikesRelations = relations(boothLikes, ({ one }) => ({
   booth: one(booths, { fields: [boothLikes.boothId], references: [booths.id] }),
 }));
 
-export const staffRelations = relations(staff, ({ one }) => ({
+export const staffRelations = relations(staff, ({ one, many }) => ({
   user: one(users, { fields: [staff.userId], references: [users.id] }),
-  booth: one(booths, { fields: [staff.boothId], references: [booths.id] }),
+  team: one(teams, { fields: [staff.teamId], references: [teams.id] }),
+  staffBooths: many(staffBooths),
+}));
+
+export const staffBoothsRelations = relations(staffBooths, ({ one }) => ({
+  staff: one(staff, { fields: [staffBooths.userId], references: [staff.userId] }),
+  booth: one(booths, { fields: [staffBooths.boothId], references: [booths.id] }),
 }));

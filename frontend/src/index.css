@@ -170,13 +170,6 @@ img {
   margin-top: 24px;
 }
 
-.admin-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
 .staff-entrance-page {
   width: min(100% - 32px, 520px);
   min-height: calc(100vh - 80px);

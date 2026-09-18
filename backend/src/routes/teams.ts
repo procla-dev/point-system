@@ -3,7 +3,7 @@ import { createSchemaFactory } from 'drizzle-zod';
 import { teams as teamsTable } from '../db/schema.js';
 import { ConflictError, ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
-import { findBoothByTeamId } from '../services/booths.js';
+import { findStaffByTeamId } from '../services/staff.js';
 import {
   createTeam,
   deleteTeam,
@@ -22,7 +22,7 @@ const TeamRequest = z
 const TeamResponse = createSelectSchema(teamsTable).pick({ id: true, name: true });
 
 const TeamWithLikeCountResponse = TeamResponse.extend({
-  likeCount: z.number().int().nonnegative().openapi({ description: '所属ブースに付いたいいねの合計' }),
+  likeCount: z.number().int().nonnegative().openapi({ description: '所属スタッフの担当ブースに付いたいいねの合計' }),
 });
 
 const getTeamsRoute = createRoute({
@@ -90,7 +90,7 @@ const deleteTeamRoute = createRoute({
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'チームが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
-    409: { description: 'このチームに所属しているブースがある', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'このチームに所属しているスタッフがいる', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -131,8 +131,8 @@ teams.openapi(deleteTeamRoute, async (c) => {
   const team = await findTeamById(id);
   if (!team) throw new NotFoundError('team not found');
 
-  const booth = await findBoothByTeamId(id);
-  if (booth) throw new ConflictError('booths belong to this team');
+  const member = await findStaffByTeamId(id);
+  if (member) throw new ConflictError('staff belong to this team');
 
   await deleteTeam(id);
   return c.body(null, 204);
