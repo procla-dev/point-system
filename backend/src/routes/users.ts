@@ -1,12 +1,13 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, users as usersTable } from '../db/schema.js';
-import { ConflictError, ErrorResponse, NotFoundError, UnauthorizedError } from '../errors.js';
+import { ConflictError, ErrorResponse, ForbiddenError, NotFoundError, UnauthorizedError } from '../errors.js';
 import { requireBoothKind } from '../middleware/booth.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken, reissueLoginToken } from '../services/auth.js';
 import { getGrantPoints, getUserBalance, grantUserPoints, spendUserPoints } from '../services/points.js';
 import { createIdentityCode, verifyIdentityCode } from '../services/identity.js';
+import { findGrantableBoothsByUserId } from '../services/staff.js';
 import { createUser, setUserDisplayName } from '../services/users.js';
 import { recordOperationLog } from '../services/operation-logs.js';
 
@@ -22,6 +23,7 @@ const LoginTokenResponse = createSelectSchema(loginTokens)
   .extend({ token: z.string().openapi({ description: 'ログイン用QRコードに埋め込むワンタイムトークン' }) });
 
 const PointGrantResponse = z.object({
+  boothName: z.string().openapi({ description: '付与したブースの名前' }),
   grantedPoints: z.number().int().positive(),
   balance: z.number().int().nonnegative(),
   transactionId: z.uuid(),
@@ -127,12 +129,16 @@ const grantUserPointsRoute = createRoute({
   operationId: 'grantUserPoints',
   tags: ['Users'],
   summary: 'ユーザーにポイントを付与する',
-  middleware: [requireRole('staff'), requireBoothKind('exhibitor')] as const,
+  description: '同じチームのスタッフが担当している展示ブースを指定して付与する。同じ来場者は1つのブースで1回まで',
+  middleware: [requireRole('staff')] as const,
   request: {
     body: {
       content: {
         'application/json': {
-          schema: z.object({ code: z.string().min(1) }),
+          schema: z.object({
+            code: z.string().min(1),
+            boothId: z.uuid().openapi({ description: '付与するブースのID' }),
+          }),
         },
       },
     },
@@ -140,7 +146,9 @@ const grantUserPointsRoute = createRoute({
   responses: {
     201: { description: '付与成功', content: { 'application/json': { schema: PointGrantResponse } } },
     401: { description: '未ログインまたは識別コードが無効', content: { 'application/json': { schema: ErrorResponse } } },
-    403: { description: 'スタッフではない', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: 'スタッフではない、または付与できないブース', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: '来場者が見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'このブースで付与済み', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -221,23 +229,36 @@ users.openapi(reissueUserLoginTokenRoute, async (c) => {
 
 
 users.openapi(grantUserPointsRoute, async (c) => {
-  const { code } = c.req.valid('json');
+  const { code, boothId } = c.req.valid('json');
   const operator = c.get('user');
-  const points = await getGrantPoints();
+
+  const grantableBooths = await findGrantableBoothsByUserId(operator.id);
+  const booth = grantableBooths.find((grantable) => grantable.id === boothId);
+  if (!booth) throw new ForbiddenError('not allowed for this booth');
+
   const userId = verifyIdentityCode(code);
   if (!userId) throw new UnauthorizedError('invalid identity code');
 
+  const points = await getGrantPoints();
   const result = await grantUserPoints({
     userId,
     operatorUserId: operator.id,
+    boothId,
     points,
   });
 
-  if (!result) throw new NotFoundError('user not found');
-  await recordOperationLog({ actorUserId: operator.id, action: 'user.points.grant', targetUserId: userId, metadata: { points } });
+  if (result.status === 'not_found') throw new NotFoundError('user not found');
+  if (result.status === 'already_granted') throw new ConflictError('already granted at this booth');
+  await recordOperationLog({
+    actorUserId: operator.id,
+    action: 'user.points.grant',
+    targetUserId: userId,
+    metadata: { points, boothId, boothName: booth.name },
+  });
 
   return c.json(
     {
+      boothName: booth.name,
       grantedPoints: points,
       balance: result.balance,
       transactionId: result.transactionId,
