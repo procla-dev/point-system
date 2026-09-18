@@ -6,6 +6,7 @@ import { requireRole } from '../middleware/auth.js';
 import { findAllBooths, findBoothById, createBooth, updateBooth, deleteBooth } from '../services/booths.js';
 import { findLikeByBoothId, likeBooth } from '../services/likes.js';
 import { findStaffBoothByBoothId } from '../services/staff.js';
+import { recordOperationLog } from '../services/operation-logs.js';
 
 const { createInsertSchema, createSelectSchema } = createSchemaFactory({ zodInstance: z });
 
@@ -179,6 +180,12 @@ booths.openapi(likeBoothRoute, async (c) => {
 
   const like = await likeBooth(user.id, booth.id);
   if (!like) throw new ConflictError('already liked this booth');
+
+  await recordOperationLog({
+    actorUserId: user.id,
+    action: 'booth.like',
+    metadata: { boothId: booth.id, boothName: booth.name },
+  });
 
   return c.json({ boothName: booth.name }, 201);
 });

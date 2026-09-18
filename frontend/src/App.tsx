@@ -3,7 +3,9 @@ import AdminPage from './pages/AdminPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import StaffPage from './pages/StaffPage'
+import StaffEntranceDisplayPage from './pages/StaffEntranceDisplayPage'
 import StaffPointsPage from './pages/StaffPointsPage'
+import BoothLikePage from './pages/BoothLikePage'
 import RouteErrorPage from './components/RouteErrorPage'
 
 type Role = 'user' | 'staff' | 'admin'
@@ -45,8 +47,10 @@ const router = createBrowserRouter([
   { path: '/', loader: redirectAdminToAdminPage, element: <LoginRoute /> },
   { path: '/login', loader: redirectAdminToAdminPage, element: <LoginRoute /> },
   { path: '/staff/entrance', loader: () => requireRole(['staff', 'admin']), element: <StaffPage />, errorElement: <RouteErrorPage /> },
+  { path: '/staff/entrance/display', loader: () => requireRole(['staff', 'admin']), element: <StaffEntranceDisplayPage />, errorElement: <RouteErrorPage /> },
   { path: '/staff/point', loader: () => requireRole(['staff', 'admin']), element: <StaffPointsPage />, errorElement: <RouteErrorPage /> },
   { path: '/admin', loader: () => requireRole(['admin']), element: <AdminPage />, errorElement: <RouteErrorPage /> },
+  { path: '/booths/:boothId/like', loader: () => requireRole(['user']), element: <BoothLikePage />, errorElement: <RouteErrorPage /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ])
 
