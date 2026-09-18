@@ -4,6 +4,7 @@ import { booths as boothsTable } from '../db/schema.js';
 import { ConflictError, ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { findAllBooths, findBoothById, createBooth, updateBooth, deleteBooth } from '../services/booths.js';
+import { findLikeByBoothId } from '../services/likes.js';
 import { findStaffByBoothId } from '../services/staff.js';
 
 const { createInsertSchema, createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -105,7 +106,7 @@ const deleteBoothRoute = createRoute({
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
-    409: { description: 'このブースに紐付いているスタッフがいる', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'このブースに紐付いているスタッフまたはいいねがある', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -148,6 +149,9 @@ booths.openapi(deleteBoothRoute, async (c) => {
 
   const assignedStaff = await findStaffByBoothId(id);
   if (assignedStaff) throw new ConflictError('staff is assigned to this booth');
+
+  const like = await findLikeByBoothId(id);
+  if (like) throw new ConflictError('this booth has likes');
 
   await deleteBooth(id);
   return c.body(null, 204);
