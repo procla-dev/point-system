@@ -55,10 +55,10 @@ export default function HomePage() {
   return (
     <main className="home-page">
       <p className="point-balance">
-        {balance === undefined ? '読み込み中…' : balance}
+        {balance === undefined ? '読み込み中…' : `${balance} pt`}
       </p>
       <Card className="home-card">
-        {qrCode && <img src={qrCode} alt="ユーザー識別用QRコード" />}
+        {qrCode && <img src={qrCode} alt="ユーザー識別用QRコード" draggable={false} />}
         {remainingSeconds !== undefined && <p>QR有効期限：あと{remainingSeconds}秒</p>}
       </Card>
       {displayName && <p className="display-name">{displayName}さん</p>}

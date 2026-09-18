@@ -142,6 +142,9 @@ img {
 .home-card img {
   width: 260px;
   margin: 0 auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .home-card p {
@@ -166,6 +169,23 @@ img {
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+}
+
+.booth-like-page {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.booth-like-content {
+  text-align: center;
+}
+
+.booth-like-complete-icon {
+  font-size: 96px;
+  line-height: 1;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 402px) {
