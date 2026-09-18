@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
 export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
@@ -27,6 +27,17 @@ export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   tokenHash: text('token_hash').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+});
+
+export const operationLogs = pgTable('operation_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  actorUserId: uuid('actor_user_id').notNull().references(() => users.id),
+  action: text('action').notNull(),
+  targetUserId: uuid('target_user_id').references(() => users.id),
+  metadata: jsonb('metadata').$type<Record<string, unknown> | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -67,6 +78,12 @@ export const booths = pgTable('booths', {
   kind: boothKind('kind').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const pointSettings = pgTable('point_settings', {
+  id: integer('id').primaryKey().default(1),
+  grantPoints: integer('grant_points').notNull().default(1),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [check('point_settings_grant_points_positive', sql`${table.grantPoints} > 0`)]);
 
 export type Booth = typeof booths.$inferSelect;
 
