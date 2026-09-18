@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
+import Card from '../components/Card'
 
 export default function HomePage() {
   const [qrCode, setQrCode] = useState<string>()
   const [balance, setBalance] = useState<number>()
+  const [displayName, setDisplayName] = useState<string>()
   const [expiresAt, setExpiresAt] = useState<Date>()
   const [remainingSeconds, setRemainingSeconds] = useState<number>()
   const [error, setError] = useState('')
@@ -19,10 +21,15 @@ export default function HomePage() {
   useEffect(() => {
     void (async () => {
       try {
-        const points = await fetch('/api/users/me/points', { credentials: 'include' })
+        const [me, points] = await Promise.all([
+          fetch('/api/users/me', { credentials: 'include' }),
+          fetch('/api/users/me/points', { credentials: 'include' }),
+        ])
         await refreshIdentityCode()
-        if (!points.ok) throw new Error('ログインしてください。')
+        if (!me.ok || !points.ok) throw new Error('ログインしてください。')
+        const profile = await me.json() as { displayName: string | null }
         const data = await points.json() as { balance: number }
+        setDisplayName(profile.displayName ?? undefined)
         setBalance(data.balance)
       } catch (e) { setError(e instanceof Error ? e.message : '情報を取得できませんでした。') }
     })()
@@ -46,11 +53,15 @@ export default function HomePage() {
   }, [expiresAt, refreshIdentityCode])
   if (error) return <main className="login-status"><p role="alert">{error}</p></main>
   return (
-    <main>
-      <h1>ホーム</h1>
-      {balance === undefined ? <p>読み込み中…</p> : <p>ポイント：{balance}</p>}
-      {qrCode && <img src={qrCode} alt="ユーザー識別用QRコード" />}
-      {remainingSeconds !== undefined && <p>QR有効期限：あと{remainingSeconds}秒</p>}
+    <main className="home-page">
+      <p className="point-balance">
+        {balance === undefined ? '読み込み中…' : balance}
+      </p>
+      <Card className="home-card">
+        {qrCode && <img src={qrCode} alt="ユーザー識別用QRコード" />}
+        {remainingSeconds !== undefined && <p>QR有効期限：あと{remainingSeconds}秒</p>}
+      </Card>
+      {displayName && <p className="display-name">{displayName}さん</p>}
     </main>
   )
 }

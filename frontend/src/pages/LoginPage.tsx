@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminPage from "./AdminPage";
 import { getErrorMessage, type Role } from "../lib/shared";
+import Card from "../components/Card";
 
 export default function LoginPage({ token }: { token: string }) {
   const navigate = useNavigate();
@@ -89,19 +90,21 @@ export default function LoginPage({ token }: { token: string }) {
   return (
     <main className="name-page">
       <h1>表示名を入力してください</h1>
-      <form className="name-card" onSubmit={(event) => void submitName(event)}>
-        <label htmlFor="display-name">表示名：</label>
-        <input
-          id="display-name"
-          value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
-          autoFocus
-          maxLength={50}
-        />
-        <button type="submit" disabled={!displayName.trim()}>
-          入力を確定
-        </button>
-      </form>
+      <Card>
+        <form onSubmit={(event) => void submitName(event)}>
+          <label htmlFor="display-name">表示名：</label>
+          <input
+            id="display-name"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            autoFocus
+            maxLength={50}
+          />
+          <button type="submit" disabled={!displayName.trim()}>
+            入力を確定
+          </button>
+        </form>
+      </Card>
     </main>
   );
 }
