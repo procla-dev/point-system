@@ -10,20 +10,38 @@ export async function createStaff() {
   });
 }
 
-/** スタッフの表示名・所属チーム・担当ブースを取得する。スタッフでなければ undefined */
-export async function findStaffAssignmentByUserId(userId: string) {
-  const row = await db.query.staff.findFirst({
-    where: eq(staffTable.userId, userId),
-    with: { user: { columns: { displayName: true } }, staffBooths: { columns: { boothId: true } } },
-  });
-  if (!row) return undefined;
+const assignmentRelations = {
+  user: { columns: { displayName: true } },
+  staffBooths: { columns: { boothId: true } },
+} as const;
 
+type StaffWithRelations = typeof staffTable.$inferSelect & {
+  user: { displayName: string | null };
+  staffBooths: { boothId: string }[];
+};
+
+function toAssignment(row: StaffWithRelations) {
   return {
     userId: row.userId,
     displayName: row.user.displayName,
     teamId: row.teamId,
     boothIds: row.staffBooths.map((staffBooth) => staffBooth.boothId),
   };
+}
+
+/** 全スタッフの表示名・所属チーム・担当ブースを作成順に取得する */
+export async function findAllStaffAssignments() {
+  const rows = await db.query.staff.findMany({
+    with: assignmentRelations,
+    orderBy: (staff, { asc }) => [asc(staff.createdAt)],
+  });
+  return rows.map(toAssignment);
+}
+
+/** スタッフの表示名・所属チーム・担当ブースを取得する。スタッフでなければ undefined */
+export async function findStaffAssignmentByUserId(userId: string) {
+  const row = await db.query.staff.findFirst({ where: eq(staffTable.userId, userId), with: assignmentRelations });
+  return row ? toAssignment(row) : undefined;
 }
 
 /** スタッフの所属チームと担当ブースをまとめて置き換える。スタッフでなければ undefined */

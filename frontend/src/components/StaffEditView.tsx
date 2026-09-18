@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getErrorMessage } from '../lib/shared'
 import Select from './Select'
-import type { StaffAssignment } from './StaffLookup'
+import type { StaffAssignment } from './StaffManagement'
 import type { Team } from './TeamManagement'
 
 type Booth = {

@@ -1,13 +1,13 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { loginTokens, booths as boothsTable } from '../db/schema.js';
-import { ErrorResponse, NotFoundError, UnauthorizedError } from '../errors.js';
+import { ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { createLoginToken } from '../services/auth.js';
 import { findBoothsByIds } from '../services/booths.js';
-import { verifyIdentityCode } from '../services/identity.js';
 import {
   createStaff,
+  findAllStaffAssignments,
   findStaffAssignmentByUserId,
   findStaffBoothsByUserId,
   setStaffAssignment,
@@ -26,17 +26,13 @@ const StaffWithLoginTokenResponse = z.object({
   expiresAt: LoginTokenResponse.shape.expiresAt,
 });
 
-const IdentityCodeField = z.string().min(1).openapi({ description: '対象スタッフの識別用動的QRコードから読み取ったコード' });
-
-const LookupStaffRequest = z.object({ code: IdentityCodeField });
-
 const UpdateStaffAssignmentRequest = z.object({
   teamId: z.uuid().nullable().openapi({ description: '所属させるチームのID。nullの場合はチームから外す' }),
   boothIds: z.array(z.uuid()).openapi({ description: '担当させるブースのID。今の担当ブースはすべてこの内容で置き換える' }),
 });
 
 const StaffAssignmentResponse = z.object({
-  userId: z.uuid().openapi({ description: 'スタッフのユーザーID。識別コードは短時間で失効するため、更新時はこのIDで指定する' }),
+  userId: z.uuid().openapi({ description: 'スタッフのユーザーID' }),
   displayName: z.string().nullable().openapi({ description: 'スタッフの表示名。未設定なら null' }),
   teamId: z.uuid().nullable().openapi({ description: '所属チームのID。未所属なら null' }),
   boothIds: z.array(z.uuid()).openapi({ description: '担当ブースのID' }),
@@ -72,19 +68,17 @@ const getMyStaffBoothsRoute = createRoute({
   },
 });
 
-const lookupStaffRoute = createRoute({
-  method: 'post',
-  path: '/lookup',
-  operationId: 'lookupStaff',
+const getStaffListRoute = createRoute({
+  method: 'get',
+  path: '/',
+  operationId: 'getStaffList',
   tags: ['Staff'],
-  summary: '識別コードで指定したスタッフの所属チームと担当ブースを取得する',
+  summary: 'スタッフ一覧を所属チーム・担当ブース付きで取得する',
   middleware: [requireRole('admin')] as const,
-  request: { body: { content: { 'application/json': { schema: LookupStaffRequest } } } },
   responses: {
-    200: { description: '取得成功', content: { 'application/json': { schema: StaffAssignmentResponse } } },
-    401: { description: '未ログインまたは識別コードが無効', content: { 'application/json': { schema: ErrorResponse } } },
+    200: { description: '取得成功', content: { 'application/json': { schema: z.array(StaffAssignmentResponse) } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
-    404: { description: 'スタッフが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -122,16 +116,9 @@ staff.openapi(getMyStaffBoothsRoute, async (c) => {
   return c.json(assignedBooths.map((booth) => ({ name: booth.name })), 200);
 });
 
-staff.openapi(lookupStaffRoute, async (c) => {
-  const { code } = c.req.valid('json');
-
-  const userId = verifyIdentityCode(code);
-  if (!userId) throw new UnauthorizedError('invalid identity code');
-
-  const assignment = await findStaffAssignmentByUserId(userId);
-  if (!assignment) throw new NotFoundError('staff not found');
-
-  return c.json(assignment, 200);
+staff.openapi(getStaffListRoute, async (c) => {
+  const allStaff = await findAllStaffAssignments();
+  return c.json(allStaff, 200);
 });
 
 staff.openapi(updateStaffAssignmentRoute, async (c) => {

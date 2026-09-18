@@ -6,7 +6,7 @@ import IssueAccountResult from '../components/IssueAccountResult';
 import IssuedAccountView from '../components/IssuedAccountView';
 import BoothManagement from '../components/BoothManagement';
 import TeamManagement, { type Team } from '../components/TeamManagement';
-import StaffLookup, { type StaffAssignment } from '../components/StaffLookup';
+import StaffManagement, { type StaffAssignment } from '../components/StaffManagement';
 import StaffEditView from '../components/StaffEditView';
 
 export default function AdminPage() {
@@ -119,7 +119,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="admin-page mt-5!">
+    <main className="admin-page mt-6!">
       <div className="flex items-center justify-between gap-4">
         <h1>管理者ページ</h1>
         <button
@@ -155,7 +155,7 @@ export default function AdminPage() {
         <>
           <TeamManagement teams={teams} loading={teamsLoading} onReload={loadTeams} />
           <hr className="mt-6 border-t-2 border-gray-500" />
-          <StaffLookup onFound={setEditingStaff} />
+          <StaffManagement teams={teams} onEdit={setEditingStaff} />
         </>
       )}
     </main>
