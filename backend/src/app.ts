@@ -1,5 +1,6 @@
 import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
+import { except } from 'hono/combine';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
@@ -11,6 +12,7 @@ import { booths } from './routes/booths.js';
 import { sessions } from './routes/sessions.js';
 import { teams } from './routes/teams.js';
 import { adminSessions, adminPointSettings } from './routes/admins.js';
+import { rateLimit } from './middleware/rate-limit.js';
 
 const base = new OpenAPIHono().basePath('/api');
 
@@ -23,6 +25,8 @@ base.use(
   }),
 );
 
+base.use('*', except('/api/sessions/*', rateLimit()));
+
 base.onError((err, c) => {
   if (err instanceof HTTPException) {
     return c.json({ status: 'error' as const, message: err.message }, err.status);
@@ -33,13 +37,13 @@ base.onError((err, c) => {
 
 const routes = base
   .route('/', health)
+  .route('/sessions', sessions)
   .route('/users', users)
   .route('/staff', staff)
   .route('/admins', admins)
   .route('/booths', booths)
-  .route('/teams', teams)
-  .route('/sessions', sessions);
-  
+  .route('/teams', teams);
+
 routes.route('/admin/sessions', adminSessions);
 routes.route('/admin/point-settings', adminPointSettings);
 

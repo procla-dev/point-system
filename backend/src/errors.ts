@@ -35,3 +35,9 @@ export class ConflictError extends HTTPException {
     super(409, { message });
   }
 }
+
+export class TooManyRequestsError extends HTTPException {
+  constructor(message: string) {
+    super(429, { message });
+  }
+}
