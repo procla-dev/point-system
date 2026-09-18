@@ -10,6 +10,8 @@ export async function getErrorMessage(response: Response, fallback: string) {
     const body = (await response.json()) as { message?: string }
     if (body.message === 'login required') return 'ログインしてください。'
     if (body.message === 'not allowed for this role') return 'この操作を行う権限がありません。'
+    if (body.message === 'already liked this booth') return 'このブースにはすでにいいねしています。'
+    if (body.message === 'this booth cannot be liked') return 'このブースにはいいねできません。'
     return body.message ?? fallback
   } catch {
     return fallback
