@@ -1,9 +1,10 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { createSchemaFactory } from 'drizzle-zod';
 import { booths as boothsTable } from '../db/schema.js';
-import { ConflictError, ErrorResponse, NotFoundError } from '../errors.js';
+import { BadRequestError, ConflictError, ErrorResponse, NotFoundError } from '../errors.js';
 import { requireRole } from '../middleware/auth.js';
 import { findAllBooths, findBoothById, createBooth, updateBooth, deleteBooth } from '../services/booths.js';
+import { findLikeByBoothId, likeBooth } from '../services/likes.js';
 import { findStaffByBoothId } from '../services/staff.js';
 
 const { createInsertSchema, createSelectSchema } = createSchemaFactory({ zodInstance: z });
@@ -23,6 +24,8 @@ const BoothResponse = createSelectSchema(boothsTable).pick({
   name: true,
   kind: true,
 });
+
+const LikeBoothResponse = z.object({ boothName: BoothResponse.shape.name });
 
 const getBoothsRoute = createRoute({
   method: 'get',
@@ -105,7 +108,28 @@ const deleteBoothRoute = createRoute({
     401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
     403: { description: '管理者ではない', content: { 'application/json': { schema: ErrorResponse } } },
     404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
-    409: { description: 'このブースに紐付いているスタッフがいる', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'このブースに紐付いているスタッフまたはいいねがある', content: { 'application/json': { schema: ErrorResponse } } },
+  },
+});
+
+const likeBoothRoute = createRoute({
+  method: 'post',
+  path: '/{id}/likes',
+  operationId: 'likeBooth',
+  tags: ['Booths'],
+  summary: 'ブースにいいねする',
+  description: 'ブースに置かれたQRコードから読み取ったIDでいいねする。1人1ブースにつき1回まで',
+  middleware: [requireRole('user')] as const,
+  request: {
+    params: z.object({ id: z.uuid() }),
+  },
+  responses: {
+    201: { description: 'いいね成功', content: { 'application/json': { schema: LikeBoothResponse } } },
+    400: { description: '展示ブースではない', content: { 'application/json': { schema: ErrorResponse } } },
+    401: { description: '未ログイン', content: { 'application/json': { schema: ErrorResponse } } },
+    403: { description: '来場者ではない', content: { 'application/json': { schema: ErrorResponse } } },
+    404: { description: 'ブースが見つからない', content: { 'application/json': { schema: ErrorResponse } } },
+    409: { description: 'すでにいいね済み', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
@@ -141,6 +165,20 @@ booths.openapi(updateBoothRoute, async (c) => {
   return c.json({ id: updatedBooth.id, name: updatedBooth.name, kind: updatedBooth.kind }, 200);
 });
 
+booths.openapi(likeBoothRoute, async (c) => {
+  const { id } = c.req.valid('param');
+  const user = c.get('user');
+
+  const booth = await findBoothById(id);
+  if (!booth) throw new NotFoundError('booth not found');
+  if (booth.kind !== 'exhibitor') throw new BadRequestError('this booth cannot be liked');
+
+  const like = await likeBooth(user.id, booth.id);
+  if (!like) throw new ConflictError('already liked this booth');
+
+  return c.json({ boothName: booth.name }, 201);
+});
+
 booths.openapi(deleteBoothRoute, async (c) => {
   const { id } = c.req.valid('param');
   const booth = await findBoothById(id);
@@ -148,6 +186,9 @@ booths.openapi(deleteBoothRoute, async (c) => {
 
   const assignedStaff = await findStaffByBoothId(id);
   if (assignedStaff) throw new ConflictError('staff is assigned to this booth');
+
+  const like = await findLikeByBoothId(id);
+  if (like) throw new ConflictError('this booth has likes');
 
   await deleteBooth(id);
   return c.body(null, 204);

@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** ユーザーの役割 */
 export const userRole = pgEnum('user_role', ['user', 'staff', 'admin']);
@@ -93,6 +93,16 @@ export const staff = pgTable('staff', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const boothLikes = pgTable(
+  'booth_likes',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id),
+    boothId: uuid('booth_id').notNull().references(() => booths.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.boothId] })],
+);
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   loginTokens: many(loginTokens),
   sessions: many(sessions),
@@ -128,6 +138,12 @@ export const pointTransactionsRelations = relations(pointTransactions, ({ one })
 
 export const boothsRelations = relations(booths, ({ many }) => ({
   staff: many(staff),
+  likes: many(boothLikes),
+}));
+
+export const boothLikesRelations = relations(boothLikes, ({ one }) => ({
+  user: one(users, { fields: [boothLikes.userId], references: [users.id] }),
+  booth: one(booths, { fields: [boothLikes.boothId], references: [booths.id] }),
 }));
 
 export const staffRelations = relations(staff, ({ one }) => ({
