@@ -52,11 +52,16 @@ export default function HomePage() {
     return () => window.clearInterval(timer)
   }, [expiresAt, refreshIdentityCode])
   if (error) return <main className="login-status"><p role="alert">{error}</p></main>
+  if (balance === undefined || !qrCode) {
+    return (
+      <main className="home-page">
+        <p className="home-loading">読み込み中…</p>
+      </main>
+    )
+  }
   return (
     <main className="home-page">
-      <p className="point-balance">
-        {balance === undefined ? '読み込み中…' : `${balance} pt`}
-      </p>
+      <p className="point-balance">{balance} pt</p>
       <Card className="home-card">
         {qrCode && <img src={qrCode} alt="ユーザー識別用QRコード" draggable={false} />}
         {remainingSeconds !== undefined && <p>QR有効期限：あと{remainingSeconds}秒</p>}
