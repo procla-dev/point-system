@@ -70,6 +70,26 @@ export default function StaffEditView({ staff, teams, onBack, onSaved }: Props) 
     }
   }
 
+  async function revokeSessions() {
+    if (!window.confirm('このスタッフをログアウトさせますか？')) return
+
+    setSubmitting(true)
+    setError('')
+    try {
+      const response = await fetch('/api/admin/sessions/revoke', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: staff.userId }),
+      })
+      if (!response.ok) throw new Error(await getErrorMessage(response, 'ログアウトさせられませんでした。'))
+      onBack()
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ログアウトさせられませんでした。')
+      setSubmitting(false)
+    }
+  }
+
   return (
     <main className="admin-page">
       <button type="button" onClick={onBack} className="font-bold!">
@@ -105,6 +125,14 @@ export default function StaffEditView({ staff, teams, onBack, onSaved }: Props) 
         </button>
       </form>
       {error && <p role="alert" className="mt-2">{error}</p>}
+
+      <hr className="mt-6 border-t-2 border-gray-500" />
+      <section className="mt-6">
+        <p>端末をなくした場合などに、このスタッフのログインを無効にします。</p>
+        <button type="button" onClick={() => void revokeSessions()} disabled={submitting} className="mt-2 p-0! underline">
+          ログアウトさせる
+        </button>
+      </section>
     </main>
   )
 }
