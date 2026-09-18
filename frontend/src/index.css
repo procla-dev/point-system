@@ -164,6 +164,12 @@ img {
   text-align: center;
 }
 
+.login-status .cf-turnstile {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
 .admin-actions {
   display: flex;
   flex-direction: column;
