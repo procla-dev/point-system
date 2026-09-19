@@ -10,7 +10,8 @@ export function useIssueAccount() {
     setState({ kind: 'ready', qrCode, loginUrl, token, expiresAt })
   }
   async function issue(path: string) {
-    setState({ kind: 'loading' })
+    const previous = state.kind === 'ready' ? state : undefined
+    setState({ kind: 'loading', previous, operation: 'issue' })
     try {
       const response = await fetch(path, { method: 'POST', credentials: 'include' })
       if (!response.ok) throw new Error(await getErrorMessage(response, 'アカウントを発行できませんでした。'))
@@ -20,7 +21,7 @@ export function useIssueAccount() {
   }
   async function reissue() {
     if (state.kind !== 'ready') return
-    setState({ kind: 'loading', previous: state })
+    setState({ kind: 'loading', previous: state, operation: 'reissue' })
     try {
       const response = await fetch('/api/users/login-tokens/reissue', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: state.token }) })
       if (!response.ok) throw new Error(await getErrorMessage(response, 'トークンを再発行できませんでした。'))
