@@ -9,7 +9,7 @@ export type EntranceDisplayMessage =
 
 export type IssueState =
   | { kind: 'idle' }
-  | { kind: 'loading'; previous?: { qrCode: string; loginUrl: string; token: string; expiresAt?: string } }
+  | { kind: 'loading'; previous?: { qrCode: string; loginUrl: string; token: string; expiresAt?: string }; operation?: 'issue' | 'reissue' }
   | { kind: 'ready'; qrCode: string; loginUrl: string; token: string; expiresAt?: string }
   | { kind: 'error'; message: string }
 

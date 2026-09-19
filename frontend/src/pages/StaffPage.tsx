@@ -39,9 +39,14 @@ export default function StaffPage() {
         <IssueAccountResult state={state} />
 
         {state.kind === 'ready' && (
-          <button className="staff-secondary-button" type="button" onClick={() => void reissue()}>
-            ログイントークンを再発行
-          </button>
+          <div className="staff-entrance-actions">
+            <button className="staff-primary-button" type="button" onClick={() => void issue("/api/users")}>
+              新規アカウントを作成
+            </button>
+            <button className="staff-secondary-button" type="button" onClick={() => void reissue()}>
+              トークンを再生成
+            </button>
+          </div>
         )}
       </Card>
     </main>

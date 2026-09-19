@@ -320,9 +320,10 @@ img {
 }
 
 .staff-entrance-card {
-  width: 100%;
+  width: min(100%, 420px);
   min-height: 0;
   box-sizing: border-box;
+  margin: 0 auto;
   padding: 28px 24px;
   text-align: center;
 }
@@ -359,6 +360,16 @@ img {
   background: #2c2c2c;
   color: #fff;
   font-size: 16px;
+}
+
+.staff-entrance-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.staff-entrance-actions .staff-secondary-button {
+  margin-top: 0;
 }
 
 .account-issue-status {

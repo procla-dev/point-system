@@ -6,7 +6,9 @@ export default function IssueAccountResult({ state }: { state: IssueState }) {
     return (
       <div className="account-issue-result is-refreshing" aria-busy="true">
         <img src={state.previous.qrCode} alt="ログイン用QRコード" />
-        <p className="account-issue-status" role="status">ログイントークンを再発行中…</p>
+        <p className="account-issue-status" role="status">
+          {state.operation === 'issue' ? '新規アカウントを発行中…' : 'ログイントークンを再発行中…'}
+        </p>
       </div>
     )
   }
